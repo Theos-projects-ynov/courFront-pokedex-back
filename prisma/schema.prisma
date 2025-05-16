@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trainer {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String
+  name          String
+  age           Int
+  region        String
+  money         Int      @default(0)
+  level         Int      @default(0)
+  exp           Int      @default(0)
+  gender        String
+  height        Float
+  weight        Float
+  description   String
+  image         String
+
+  badge         Json?      // CHANGE ICI: tableau de string (array) en JSON
+  pokemonStarter Json?     // starter en JSON
+  pokemons      Json?      // array de pokémons en JSON
+  teamPokemon   Json?      // array en JSON
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
