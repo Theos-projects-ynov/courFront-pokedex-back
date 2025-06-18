@@ -8,26 +8,149 @@ datasource db {
 }
 
 model Trainer {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String
-  name          String
-  age           Int
-  region        String
-  money         Int      @default(0)
-  level         Int      @default(0)
-  exp           Int      @default(0)
-  gender        String
-  height        Float
-  weight        Float
-  description   String
-  image         String
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String
+  age             Int
+  region          String
+  money           Int       @default(0)
+  level           Int       @default(0)
+  exp             Int       @default(0)
+  gender          String
+  height          Float
+  weight          Float
+  description     String
+  image           String
+  badge           Json?
+  pokemonStarter  Json?
+  teamPokemon     Json?
+  pokemons        OwnedPokemon[]
+  pokemonOwnedMoves PokemonOwnedMove[]
+  isAdmin         Boolean    @default(false)
+  captureAttempts CaptureAttempt[]      
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
 
-  badge         Json?      // CHANGE ICI: tableau de string (array) en JSON
-  pokemonStarter Json?     // starter en JSON
-  pokemons      Json?      // array de pokémons en JSON
-  teamPokemon   Json?      // array en JSON
+model OwnedPokemon {
+  id             String   @id @default(uuid())
+  pokedexId      Int
+  trainer        Trainer  @relation(fields: [trainerId], references: [id])
+  trainerId      String
+  pokemonOwnedMoves PokemonOwnedMove[]
+  boostAtk       Int      @default(0)
+  boostDef       Int      @default(0)
+  boostRes       Int      @default(0)
+  boostPv        Int      @default(0)
+  level          Int      @default(1)
+  genre          String
+  createdAt      DateTime @default(now())
+}
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model CaptureAttempt {
+  id           String    @id @default(uuid())
+  trainer      Trainer   @relation(fields: [trainerId], references: [id])
+  trainerId    String    @unique
+  zone         Int
+  pokedexId    Int
+  level        Int
+  isShiny      Boolean
+  genre        String
+  data         Json
+  createdAt    DateTime  @default(now())
+}
+
+model Move {
+  id          Int          @id // id de PokéAPI (move)
+  name        String
+  type        String
+  power       Int?
+  accuracy    Int?
+  pp          Int?
+  priority    Int?
+  damageClass String
+  pokemonMoves PokemonMove[]
+  pokemonOwnedMoves PokemonOwnedMove[]
+}
+
+model PokemonMove {
+  id         String   @id @default(uuid())
+  pokemonId  Int      // pokedex_id du Pokémon (ex: 25 pour Pikachu)
+  move       Move     @relation(fields: [moveId], references: [id])
+  moveId     Int
+  level      Int      // Level où le Pokémon apprend cette attaque
+
+  @@unique([pokemonId, moveId, level])
+}
+
+model PokemonOwnedMove {
+  id             String        @id @default(uuid())
+  trainer        Trainer       @relation(fields: [trainerId], references: [id])
+  trainerId      String
+  ownedPokemon   OwnedPokemon  @relation(fields: [ownedPokemonId], references: [id])
+  ownedPokemonId String
+  move           Move          @relation(fields: [moveId], references: [id])
+  moveId         Int
+
+  @@unique([trainerId, ownedPokemonId, moveId])
+}
+
+export interface IBattlePokemon {
+  id: string; // ID du OwnedPokemon ou généré pour IA
+  pokedexId: number;
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  moves: IBattleMove[];
+  isPlayer: boolean;
+}
+
+export interface IBattleMove {
+  id: number;
+  name: string;
+  type: string;
+  power: number | null;
+  accuracy: number | null;
+  pp: number;
+  maxPp: number;
+  priority: number;
+  damageClass: string;
+}
+
+export interface IBattleState {
+  battleId: string;
+  trainerId: string;
+  playerTeam: IBattlePokemon[];
+  aiTeam: IBattlePokemon[];
+  currentPlayerPokemon: IBattlePokemon;
+  currentAiPokemon: IBattlePokemon;
+  turn: number;
+  phase: 'SELECTION' | 'ATTACK' | 'SWITCH' | 'VICTORY' | 'DEFEAT';
+  aiDefeatedCount: number; // Pour savoir quand spawner le boss
+}
+
+export interface IBattleAction {
+  type: 'ATTACK' | 'SWITCH' | 'START_BATTLE' | 'SELECT_TEAM';
+  pokemonId?: string;
+  moveId?: number;
+  targetId?: string;
+}
+
+export interface IBattleResult {
+  damage: number;
+  attacker: IBattlePokemon;
+  defender: IBattlePokemon;
+  move: IBattleMove;
+  isKO: boolean;
+  message: string;
+}
+
+export interface ITeamSelection {
+  trainerId: string;
+  selectedPokemonIds: string[]; // 4 IDs de OwnedPokemon
 }
