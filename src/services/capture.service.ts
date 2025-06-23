@@ -65,7 +65,17 @@ export async function attemptCapture(trainerId: string, zone: number) {
 
 
   if (!success) {
-    return { success: false };
+    return { 
+      success: false,
+      pokemon: {
+        name: (attempt.data as any)?.name?.fr || (attempt.data as any)?.name?.en || 'Pokémon inconnu',
+        level: attempt.level,
+        image: (attempt.data as any)?.sprites?.regular || null,
+        isShiny: attempt.isShiny,
+        genre: attempt.genre,
+        pokedexId: attempt.pokedexId
+      }
+    };
   }
 
   const owned = await prisma.ownedPokemon.create({
@@ -82,6 +92,8 @@ export async function attemptCapture(trainerId: string, zone: number) {
   });
 
   console.log("[capture] - owned : ", owned);
+  console.log("[capture] - attempt.pokedexId : ", attempt.pokedexId);
+  console.log("[capture] - attempt.data : ", attempt.data);
   
   const moves : object[] = await GetAllMovesForPokemon(attempt.pokedexId, attempt.level);
 

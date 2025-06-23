@@ -4,7 +4,7 @@ import { getOrCreateCapture, releaseCapture, attemptCapture } from "../controlle
 
 const router = Router();
 
-router.post('/zone/:zoneId', authenticateJWT, getOrCreateCapture);
+router.get('/zone/:zoneId', authenticateJWT, getOrCreateCapture);
 router.post('/zone/:zoneId/release', authenticateJWT, releaseCapture);
 router.post('/zone/:zoneId/attempt', authenticateJWT, attemptCapture);
 

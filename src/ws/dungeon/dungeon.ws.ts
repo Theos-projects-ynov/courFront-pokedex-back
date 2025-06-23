@@ -129,7 +129,7 @@ export function setupDungeonWebSocket(ws: AuthenticatedWebSocket, request: any) 
       connectedClients.delete(ws.trainerId);
       
       // Nettoyer la session dungeon si le joueur se déconnecte
-      const sessionId = `${ws.trainerId}_${ws.dungeonId}`;
+      const sessionId = ws.trainerId; // Utiliser seulement le trainerId
       const session = dungeonSessions.get(sessionId);
       if (session && session.currentBattleId) {
         battleService.deleteBattle(session.currentBattleId);
@@ -220,7 +220,7 @@ async function handleDungeonTeamSelection(ws: AuthenticatedWebSocket, teamData: 
     ws.dungeonId = teamData.dungeonId;
 
     // Créer une session de donjon avec toutes les informations
-    const sessionId = `${ws.trainerId}_${teamData.dungeonId}`;
+    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
     const dungeonSession: IDungeonSession = {
       sessionId,
       trainerId: ws.trainerId,
@@ -305,7 +305,7 @@ async function handleStartDungeon(ws: AuthenticatedWebSocket, data: { dungeonId:
   }
 
   try {
-    const sessionId = `${ws.trainerId}_${data.dungeonId}`;
+    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
     const session = dungeonSessions.get(sessionId);
 
     if (!session || session.status !== 'READY') {
@@ -556,7 +556,7 @@ async function handleDungeonAttack(ws: AuthenticatedWebSocket, data: { moveId: n
 }
 
 async function handleDungeonBattleEnd(ws: AuthenticatedWebSocket, battleState: IBattleState) {
-  const sessionId = `${battleState.trainerId}_${battleState.dungeonId}`;
+  const sessionId = battleState.trainerId; // Utiliser seulement le trainerId
   const session = dungeonSessions.get(sessionId);
   
   if (!session) return;
@@ -671,7 +671,7 @@ async function handleGetDungeonInfo(ws: AuthenticatedWebSocket, data: { dungeonI
   }
 
   try {
-    const sessionId = `${ws.trainerId}_${data.dungeonId}`;
+    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
     const session = dungeonSessions.get(sessionId);
 
     if (!session) {
@@ -725,12 +725,12 @@ function getRecommendedLevel(dungeonId: number): number {
 
 // Fonction pour récupérer une session (utile pour d'autres parties du code)
 export function getDungeonSession(trainerId: string, dungeonId: number): IDungeonSession | undefined {
-  const sessionId = `${trainerId}_${dungeonId}`;
+  const sessionId = trainerId; // Utiliser seulement le trainerId
   return dungeonSessions.get(sessionId);
 }
 
 // Fonction pour supprimer une session
 export function deleteDungeonSession(trainerId: string, dungeonId: number): boolean {
-  const sessionId = `${trainerId}_${dungeonId}`;
+  const sessionId = trainerId; // Utiliser seulement le trainerId
   return dungeonSessions.delete(sessionId);
 }

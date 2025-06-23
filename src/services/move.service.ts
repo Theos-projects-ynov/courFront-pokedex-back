@@ -148,8 +148,8 @@ export async function GetAllMovesForPokemon(pokedexId: number, level: number) {
     moves = await GetMovesIfExists(pokedexId);
   }
 
-  // Filtrer par level
-  let movesWithLevel = moves.filter((move) => move.level <= level);
+  // Filtrer par level (inclure les moves de level 0 qui sont des TM/TR)
+  let movesWithLevel = moves.filter((move) => move.level === 0 || move.level <= level);
 
   // Prendre 4 moves aléatoires si plus de 4
   if (movesWithLevel.length > 4) {
