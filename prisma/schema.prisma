@@ -121,6 +121,7 @@ model DungeonSession {
   status          String   @default("READY") // READY, IN_PROGRESS, BATTLE, COMPLETED, FAILED
   defeatedEnemies Int      @default(0)
   enemyPokemons   Json?    // Données des 3 Pokémon générés pour ce donjon
+  deadPokemonIds  Json?    // Array des IDs des Pokémon du joueur qui sont morts
   currentBattleId String?
   completedAt     DateTime?
   createdAt       DateTime @default(now())

@@ -1,736 +1,969 @@
 import { WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
+import { dungeonService } from '../../services/dungeon.service';
 import * as pokemonService from '../../services/pokemon.service';
-import * as battleService from '../../services/battle.service';
-import { IBattleState, IBattlePokemon } from '../../models/IBattle';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ultrasecret';
 
 interface AuthenticatedWebSocket extends WebSocket {
   trainerId?: string;
-  dungeonId?: number;
-  battleId?: string;
 }
-
-interface IDungeonTeamSelection {
-  trainerId: string;
-  selectedPokemonIds: string[]; // Exactement 4 Pokémon
-  dungeonId: number;
-}
-
-interface IDungeonSession {
-  sessionId: string;
-  trainerId: string;
-  dungeonId: number;
-  selectedPokemon: string[]; // 4 Pokémon validés
-  status: 'TEAM_SELECTION' | 'READY' | 'IN_PROGRESS' | 'BATTLE' | 'COMPLETED';
-  currentBattleId?: string;
-  enemyPokemons?: IBattlePokemon[]; // Les 3 Pokémon générés pour le donjon
-  defeatedEnemies?: number; // Nombre d'ennemis battus
-}
-
-interface IDungeonData {
-  id: number;
-  name: string;
-  rewards: string;
-  bossPokemonId: number;
-  bossLevel: number;
-  spawnLevels: [number, number, number]; // 3 niveaux pour les 3 Pokémon qui spawneront
-}
-
-const connectedClients = new Map<string, AuthenticatedWebSocket>();
-const dungeonSessions = new Map<string, IDungeonSession>();
-
-// Liste des Pokémon disponibles pour les donjons (roster)
-const POKEMON_ROSTER = [
-  1, 4, 7, 25, 39, 52, 54, 58, 60, 63, 66, 69, 72, 74, 81, 84, 86, 90, 92, 95, 
-  100, 102, 104, 109, 111, 116, 118, 120, 129, 133, 138, 140, 147, 152, 155, 158
-]; // Pokémon de base pour les donjons
-
-// Liste des donjons disponibles (en dur pour le moment)
-const AVAILABLE_DUNGEONS: IDungeonData[] = [
-  {
-    id: 1,
-    name: "Donjon de mew",
-    rewards: "Potion x3, Super Ball x2, 500 Gold",
-    bossPokemonId: 151,
-    bossLevel: 25,
-    spawnLevels: [15, 17, 20]
-  },
-  {
-    id: 2,
-    name: "Caverne de Glace",
-    rewards: "Hyper Potion x2, Ultra Ball x1, Pierre Glace, 750 Gold",
-    bossPokemonId: 144, 
-    bossLevel: 35,
-    spawnLevels: [20, 25, 30]
-  },
-  {
-    id: 3,
-    name: "Volcan Ardent",
-    rewards: "Max Potion x1, Master Ball x1, Pierre Feu, 1000 Gold",
-    bossPokemonId: 146,
-    bossLevel: 45,
-    spawnLevels: [25, 30, 35]
-  }
-];
 
 export function setupDungeonWebSocket(ws: AuthenticatedWebSocket, request: any) {
   console.log('New dungeon WebSocket connection');
 
-  ws.on('message', async (data: string) => {
+  ws.on('message', async (data: any) => {
     try {
-      const message = JSON.parse(data);
-      console.log('[DUNGEON WS] Received:', message);
+      console.log('[DUNGEON WS] Raw data received:', data);
+      console.log('[DUNGEON WS] Data type:', typeof data);
+      console.log('[DUNGEON WS] Data length:', data.length);
+      
+      // Convertir en string si c'est un Buffer
+      const dataString = data.toString();
+      console.log('[DUNGEON WS] Data as string:', dataString);
+      
+      // Tenter de parser le JSON, avec fallback pour JS object literal
+      let message;
+      try {
+        message = JSON.parse(dataString);
+      } catch (jsonError) {
+        console.log('[DUNGEON WS] JSON parse failed, trying to fix format...');
+        
+        // Tenter de corriger le format JS object literal vers JSON
+        try {
+          const fixedJson = dataString
+            .replace(/(\w+):/g, '"$1":')  // Ajouter guillemets aux clés
+            .replace(/'/g, '"');          // Remplacer ' par "
+            
+          console.log('[DUNGEON WS] Fixed JSON:', fixedJson);
+          message = JSON.parse(fixedJson);
+        } catch (fixError) {
+          console.error('[DUNGEON WS] Failed to fix JSON format:', fixError);
+          throw jsonError; // Relancer l'erreur originale
+        }
+      }
+      console.log('[DUNGEON WS] Parsed message:', message);
 
       switch (message.type) {
-        case 'AUTHENTICATE':
-          await handleAuthentication(ws, message.token);
+        case 'ENTER_DUNGEON':
+          await handleEnterDungeon(ws, message);
           break;
 
-        case 'SELECT_DUNGEON_TEAM':
-          await handleDungeonTeamSelection(ws, message.data);
+        case 'START_FIGHT':
+          await handleStartFight(ws, message);
           break;
 
-        case 'START_DUNGEON':
-          await handleStartDungeon(ws, message.data);
-          break;
-
-        case 'GET_DUNGEON_INFO':
-          await handleGetDungeonInfo(ws, message.data);
-          break;
-
-        // Actions de combat dans le donjon
-        case 'DUNGEON_ATTACK':
-          await handleDungeonAttack(ws, message.data);
-          break;
-
-        case 'DUNGEON_SWITCH':
-          await handleDungeonSwitch(ws, message.data);
+        case 'CHANGE_POKEMON':
+          await handleChangePokemon(ws, message);
           break;
 
         default:
           ws.send(JSON.stringify({
             type: 'ERROR',
-            message: 'Action non reconnue pour le mode donjon'
+            error: 'Action non reconnue pour le mode donjon',
+            code: 'UNKNOWN_ACTION'
           }));
       }
     } catch (error) {
       console.error('[DUNGEON WS] Error:', error);
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Erreur lors du traitement du message'
+        error: 'Erreur lors du traitement du message',
+        code: 'PROCESSING_ERROR'
       }));
     }
   });
 
   ws.on('close', () => {
     if (ws.trainerId) {
-      connectedClients.delete(ws.trainerId);
-      
-      // Nettoyer la session dungeon si le joueur se déconnecte
-      const sessionId = ws.trainerId; // Utiliser seulement le trainerId
-      const session = dungeonSessions.get(sessionId);
-      if (session && session.currentBattleId) {
-        battleService.deleteBattle(session.currentBattleId);
-      }
-      dungeonSessions.delete(sessionId);
+      // Nettoyer la session si nécessaire
+      dungeonService.deleteSession(ws.trainerId);
     }
     console.log('Dungeon WebSocket connection closed');
   });
 }
 
-async function handleAuthentication(ws: AuthenticatedWebSocket, token: string) {
+async function handleEnterDungeon(ws: AuthenticatedWebSocket, message: any) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    ws.trainerId = decoded.id;
+    // 1. Authentification
+    if (!message.token) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Token requis',
+        code: 'MISSING_TOKEN'
+      }));
+      return;
+    }
+
+    let trainerId: string;
+    try {
+      const decoded = jwt.verify(message.token, JWT_SECRET) as any;
+      trainerId = decoded.id;
+      ws.trainerId = trainerId;
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Token invalide',
+        code: 'INVALID_TOKEN'
+      }));
+      return;
+    }
+
+    // 2. Validation des données
+    const { dungeonId, selectedPokemonIds } = message.data || {};
     
-    connectedClients.set(decoded.id, ws);
-    
-    ws.send(JSON.stringify({
-      type: 'AUTHENTICATED',
-      trainerId: decoded.id,
-      message: 'Connexion au mode donjon établie avec succès'
-    }));
-  } catch (error) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Token invalide'
-    }));
-    ws.close();
-  }
-}
-
-async function handleDungeonTeamSelection(ws: AuthenticatedWebSocket, teamData: IDungeonTeamSelection) {
-  if (!ws.trainerId) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Non authentifié'
-    }));
-    return;
-  }
-
-  try {
-    // Validation des données de base
-    if (!teamData.dungeonId || !teamData.selectedPokemonIds || teamData.selectedPokemonIds.length === 0) {
+    if (!dungeonId || !selectedPokemonIds) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Données invalides : donjon ou équipe manquante'
+        error: 'Données manquantes : dungeonId et selectedPokemonIds requis',
+        code: 'MISSING_DATA'
       }));
       return;
     }
 
-    // Vérifier qu'il y a exactement 4 Pokémon
-    if (teamData.selectedPokemonIds.length !== 4) {
+    if (!Array.isArray(selectedPokemonIds) || selectedPokemonIds.length !== 4) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Exactement 4 Pokémon requis pour un donjon'
+        error: 'Exactement 4 Pokémon requis',
+        code: 'INVALID_TEAM_SIZE'
       }));
       return;
     }
 
-    // Vérifier que le donjon existe
-    const dungeonData = AVAILABLE_DUNGEONS.find(d => d.id === teamData.dungeonId);
-    if (!dungeonData) {
+    // 3. Vérifier que le donjon existe
+    const dungeon = await dungeonService.getDungeonById(dungeonId);
+    if (!dungeon) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Donjon introuvable'
+        error: 'Donjon introuvable ou inactif',
+        code: 'DUNGEON_NOT_AVAILABLE'
       }));
       return;
     }
 
-    // Récupérer tous les Pokémon du joueur
-    const trainerPokemons = await pokemonService.listOwnedPokemonsByTrainer(ws.trainerId);
+    // 4. Vérifier que les Pokémon appartiennent au joueur
+    const trainerPokemons = await pokemonService.listOwnedPokemonsByTrainer(trainerId);
     const trainerPokemonIds = trainerPokemons.map(p => p.id);
-
-    // Vérifier que tous les Pokémon sélectionnés appartiennent au joueur
-    const invalidPokemonIds = teamData.selectedPokemonIds.filter(id => !trainerPokemonIds.includes(id));
+    
+    const invalidPokemonIds = selectedPokemonIds.filter(id => !trainerPokemonIds.includes(id));
     if (invalidPokemonIds.length > 0) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: `Pokémon invalides ou non possédés : ${invalidPokemonIds.join(', ')}`
+        error: `Pokémon non possédés : ${invalidPokemonIds.join(', ')}`,
+        code: 'POKEMON_NOT_OWNED'
       }));
       return;
     }
 
-    // Récupérer les détails des Pokémon sélectionnés
-    const selectedPokemons = trainerPokemons.filter(p => teamData.selectedPokemonIds.includes(p.id));
-
-    teamData.trainerId = ws.trainerId;
-    ws.dungeonId = teamData.dungeonId;
-
-    // Créer une session de donjon avec toutes les informations
-    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
-    const dungeonSession: IDungeonSession = {
-      sessionId,
-      trainerId: ws.trainerId,
-      dungeonId: teamData.dungeonId,
-      selectedPokemon: teamData.selectedPokemonIds,
-      status: 'READY',
-      defeatedEnemies: 0
-    };
-
-    dungeonSessions.set(sessionId, dungeonSession);
-
-    // Collecter toutes les informations demandées
-    const collectedInfo = {
-      // Informations du joueur
-      trainerId: ws.trainerId,
-      
-      // Informations des Pokémon (4 Pokémon avec leurs détails)
-      selectedPokemons: selectedPokemons.map(p => ({
-        id: p.id,
-        pokedexId: p.pokedexId,
-        name: p.name?.fr || 'Inconnu',
-        level: p.level,
-        genre: p.genre,
-        boosts: {
-          atk: p.boostAtk,
-          def: p.boostDef,
-          res: p.boostRes,
-          pv: p.boostPv
-        }
-      })),
-      
-      // Informations du donjon
-      dungeonInfo: {
-        id: dungeonData.id,
-        name: dungeonData.name,
-        rewards: dungeonData.rewards,
-        boss: {
-          pokemonId: dungeonData.bossPokemonId,
-          level: dungeonData.bossLevel
-        },
-        spawnLevels: dungeonData.spawnLevels // [15, 17, 20] - 3 niveaux pour les 3 Pokémon qui spawneront
-      }
-    };
-
-    ws.send(JSON.stringify({
-      type: 'DUNGEON_TEAM_SELECTED',
-      data: {
-        sessionId,
-        ...collectedInfo,
-        status: 'READY',
-        message: `Équipe validée pour ${dungeonData.name}. Prêt à commencer l'exploration !`
-      }
-    }));
-
-    // Log des informations collectées (pour debug)
-    console.log('[DUNGEON] Informations collectées :', {
-      trainerId: ws.trainerId,
-      dungeonId: teamData.dungeonId,
-      pokemonCount: selectedPokemons.length,
-      pokemonIds: teamData.selectedPokemonIds,
-      dungeonName: dungeonData.name,
-      bossInfo: `Pokémon ${dungeonData.bossPokemonId} niveau ${dungeonData.bossLevel}`,
-      spawnLevels: dungeonData.spawnLevels
-    });
-
-  } catch (error) {
-    console.error('[DUNGEON] Erreur lors de la sélection d\'équipe:', error);
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: `Erreur lors de la sélection d'équipe: ${(error as Error).message}`
-    }));
-  }
-}
-
-async function handleStartDungeon(ws: AuthenticatedWebSocket, data: { dungeonId: number }) {
-  if (!ws.trainerId) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Non authentifié'
-    }));
-    return;
-  }
-
-  try {
-    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
-    const session = dungeonSessions.get(sessionId);
-
-    if (!session || session.status !== 'READY') {
-      ws.send(JSON.stringify({
-        type: 'ERROR',
-        message: 'Aucune session prête pour ce donjon. Sélectionnez d\'abord votre équipe.'
-      }));
-      return;
-    }
-
-    const dungeonData = AVAILABLE_DUNGEONS.find(d => d.id === data.dungeonId);
-    if (!dungeonData) {
-      ws.send(JSON.stringify({
-        type: 'ERROR',
-        message: 'Donjon introuvable'
-      }));
-      return;
-    }
-
-    // Générer 3 Pokémon aléatoires avec les niveaux du donjon
-    const enemyPokemons = await generateDungeonEnemies(dungeonData);
+    // 5. Vérifier s'il y a une session existante
+    const existingSession = await dungeonService.getActiveSession(trainerId);
+    const hadExistingSession = !!existingSession;
     
-    // Mettre à jour la session
-    session.status = 'IN_PROGRESS';
-    session.enemyPokemons = enemyPokemons;
-    dungeonSessions.set(sessionId, session);
+    // 6. Créer la nouvelle session (écrase l'ancienne si elle existe)
+    const session = await dungeonService.createOrUpdateSession(trainerId, dungeonId, selectedPokemonIds);
+    const dungeonInfo = await dungeonService.generateDungeonInfo(dungeonId);
+    
+    if (!dungeonInfo) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Impossible de générer les informations du donjon',
+        code: 'GENERATION_ERROR'
+      }));
+      return;
+    }
 
-    ws.send(JSON.stringify({
-      type: 'DUNGEON_STARTED',
-      data: {
-        sessionId,
-        dungeonName: dungeonData.name,
-        enemyPokemons: enemyPokemons.map(p => ({
+    // 7. Récupérer les détails des Pokémon sélectionnés avec leurs vraies données
+    const selectedPokemons = trainerPokemons.filter(p => selectedPokemonIds.includes(p.id));
+    
+    // Récupérer les vraies données des Pokémon depuis l'API
+    const pokemonDetailsPromises = selectedPokemons.map(async (p) => {
+      try {
+        const response = await fetch(`https://tyradex.app/api/v1/pokemon/${p.pokedexId}`);
+        const pokemonData = await response.json() as any;
+        
+        // Calculer les vraies stats avec les boosts
+        const level = p.level;
+        const maxHp = Math.floor((pokemonData.stats?.hp || 45) * 2 * level / 100 + level + 10) + p.boostPv;
+        const attack = Math.floor((pokemonData.stats?.atk || 49) * 2 * level / 100 + 5) + p.boostAtk;
+        const defense = Math.floor((pokemonData.stats?.def || 49) * 2 * level / 100 + 5) + p.boostDef;
+        const speed = Math.floor((pokemonData.stats?.spe || 45) * 2 * level / 100 + 5);
+        
+        return {
           id: p.id,
           pokedexId: p.pokedexId,
-          name: p.name,
+          name: pokemonData.name?.fr || pokemonData.name?.en || `Pokémon ${p.pokedexId}`,
           level: p.level,
-          maxHp: p.maxHp
-        })),
-        message: `Exploration de ${dungeonData.name} commencée ! 3 Pokémon sauvages vous attendent.`,
-        nextAction: 'Préparez-vous au premier combat !'
+          genre: p.genre,
+          sprite: pokemonData.sprites?.regular || '',
+          types: pokemonData.types?.map((t: any) => t.name) || [],
+          stats: {
+            hp: maxHp,
+            maxHp: maxHp,
+            attack: attack,
+            defense: defense,
+            speed: speed
+          },
+          boosts: {
+            atk: p.boostAtk,
+            def: p.boostDef,
+            res: p.boostRes,
+            pv: p.boostPv
+          }
+        };
+      } catch (error) {
+        console.error(`[DUNGEON] Error fetching data for Pokemon ${p.pokedexId}:`, error);
+        // Fallback avec données basiques
+        const level = p.level;
+        const maxHp = Math.floor(45 * 2 * level / 100 + level + 10) + p.boostPv;
+        
+        return {
+          id: p.id,
+          pokedexId: p.pokedexId,
+          name: `Pokémon ${p.pokedexId}`,
+          level: p.level,
+          genre: p.genre,
+          sprite: '',
+          types: ['Normal'],
+          stats: {
+            hp: maxHp,
+            maxHp: maxHp,
+            attack: Math.floor(49 * 2 * level / 100 + 5) + p.boostAtk,
+            defense: Math.floor(49 * 2 * level / 100 + 5) + p.boostDef,
+            speed: Math.floor(45 * 2 * level / 100 + 5)
+          },
+          boosts: {
+            atk: p.boostAtk,
+            def: p.boostDef,
+            res: p.boostRes,
+            pv: p.boostPv
+          }
+        };
+      }
+    });
+    
+    const detailedPokemons = await Promise.all(pokemonDetailsPromises);
+
+    // 8. Envoyer la réponse complète
+    console.log(`[DUNGEON] Sending ${session.enemyPokemons?.length || 0} enemies to front (${(session.enemyPokemons?.length || 1) - 1} normal + 1 boss)`);
+    
+    ws.send(JSON.stringify({
+      type: 'DUNGEON_READY',
+      data: {
+        trainerId,
+        session: {
+          id: session.id,
+          status: session.status,
+          selectedPokemon: session.selectedPokemon,
+          defeatedEnemies: session.defeatedEnemies
+        },
+        dungeonInfo: {
+          id: dungeon.id,
+          name: dungeon.name,
+          description: dungeon.description,
+          rewards: dungeon.rewards,
+          bossLevel: dungeon.bossLevel,
+          spawnLevels: dungeon.spawnLevels
+        },
+        playerTeam: detailedPokemons,
+        enemies: session.enemyPokemons?.slice(0, -1).map((enemy: any) => ({
+          id: enemy.id,
+          pokedexId: enemy.pokedexId,
+          name: enemy.name,
+          level: enemy.level,
+          hp: enemy.hp,
+          maxHp: enemy.maxHp,
+          sprite: enemy.sprite,
+          types: enemy.types,
+          moves: enemy.moves.map((m: any) => ({
+            id: m.id,
+            name: m.name,
+            power: m.power,
+            type: m.type
+          }))
+        })) || [],
+        boss: session.enemyPokemons && session.enemyPokemons.length > 0 ? (() => {
+          const boss = session.enemyPokemons[session.enemyPokemons.length - 1] as any;
+          return {
+            pokedexId: boss.pokedexId,
+            name: boss.name,
+            level: boss.level,
+            sprite: boss.sprite,
+            types: boss.types,
+            stats: boss.stats
+          };
+        })() : {
+          pokedexId: dungeonInfo.boss.pokedexId,
+          name: dungeonInfo.boss.name,
+          level: dungeonInfo.boss.level,
+          sprite: dungeonInfo.boss.sprite,
+          types: dungeonInfo.boss.types,
+          stats: dungeonInfo.boss.stats
+        },
+        rewards: dungeonInfo.dynamicRewards,
+        message: hadExistingSession 
+          ? `Session précédente écrasée ! Bienvenue dans ${dungeon.name} ! 3 adversaires + 1 boss vous attendent.`
+          : `Bienvenue dans ${dungeon.name} ! 3 adversaires + 1 boss vous attendent.`,
+        nextAction: 'Prêt pour le premier combat !',
+        sessionReset: hadExistingSession
       }
     }));
 
-    // Démarrer automatiquement le premier combat
-    await startDungeonBattle(ws, session, 0);
+    if (hadExistingSession) {
+      console.log(`[DUNGEON] ${trainerId} reset previous session and entered dungeon ${dungeonId} with team:`, selectedPokemonIds);
+    } else {
+      console.log(`[DUNGEON] ${trainerId} entered dungeon ${dungeonId} with team:`, selectedPokemonIds);
+    }
 
   } catch (error) {
-    console.error('[DUNGEON] Erreur lors du démarrage:', error);
+    console.error('[DUNGEON] Error in handleEnterDungeon:', error);
     ws.send(JSON.stringify({
       type: 'ERROR',
-      message: `Erreur lors du démarrage du donjon: ${(error as Error).message}`
+      error: `Erreur lors de l'entrée dans le donjon: ${(error as Error).message}`,
+      code: 'INTERNAL_ERROR'
     }));
   }
 }
 
-async function generateDungeonEnemies(dungeonData: IDungeonData): Promise<IBattlePokemon[]> {
-  const enemies: IBattlePokemon[] = [];
-  
-  for (let i = 0; i < 3; i++) {
-    // Choisir un Pokémon aléatoire du roster
-    const randomPokedexId = POKEMON_ROSTER[Math.floor(Math.random() * POKEMON_ROSTER.length)];
-    const level = dungeonData.spawnLevels[i];
-    
-    // Créer un Pokémon ennemi temporaire
-    const tempOwnedPokemon = {
-      id: `dungeon_enemy_${i}_${Date.now()}`,
-      pokedexId: randomPokedexId,
-      level: level,
-      boostAtk: 0,
-      boostDef: 0,
-      boostRes: 0,
-      boostPv: 0,
-      genre: Math.random() > 0.5 ? 'Mâle' : 'Femelle',
-      pokemonOwnedMoves: [] // Sera généré par le service battle
-    };
+// Map pour stocker les combats actifs
+const activeBattles = new Map<string, IBattleState>();
 
-    const battlePokemon = await battleService.convertToBattlePokemon(tempOwnedPokemon, false);
-    enemies.push(battlePokemon);
-  }
-
-  return enemies;
+interface IBattleState {
+  battleId: string;
+  trainerId: string;
+  playerPokemon: IBattlePokemon;
+  enemyPokemon: IBattlePokemon;
+  turn: number;
+  isActive: boolean;
+  ws: AuthenticatedWebSocket;
 }
 
-async function startDungeonBattle(ws: AuthenticatedWebSocket, session: IDungeonSession, enemyIndex: number) {
+interface IBattlePokemon {
+  id: string;
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  moves: IBattleMove[];
+}
+
+interface IBattleMove {
+  id: number;
+  name: string;
+  power: number;
+  accuracy: number;
+  pp: number;
+  priority: number;
+}
+
+async function handleStartFight(ws: AuthenticatedWebSocket, message: any) {
+  if (!ws.trainerId) {
+    ws.send(JSON.stringify({
+      type: 'ERROR',
+      error: 'Non authentifié',
+      code: 'UNAUTHORIZED'
+    }));
+    return;
+  }
+
   try {
-    if (!session.enemyPokemons || enemyIndex >= session.enemyPokemons.length) {
+    const { selectedPokemonId } = message.data || {};
+    
+    if (!selectedPokemonId) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Ennemi introuvable'
+        error: 'ID du Pokémon requis',
+        code: 'MISSING_POKEMON_ID'
       }));
       return;
     }
 
-    // Récupérer l'équipe du joueur
-    const trainerPokemons = await pokemonService.listOwnedPokemonsByTrainer(session.trainerId);
-    const selectedPokemons = trainerPokemons.filter(p => session.selectedPokemon.includes(p.id));
-    
-    // Convertir en Pokémon de combat
-    const playerTeam = await Promise.all(
-      selectedPokemons.map(p => battleService.convertToBattlePokemon(p, true))
-    );
-
-    // Créer l'état de bataille pour le donjon
-    const currentEnemy = session.enemyPokemons[enemyIndex];
-    const battleState: IBattleState = {
-      battleId: `dungeon_battle_${session.sessionId}_${enemyIndex}`,
-      trainerId: session.trainerId,
-      dungeonId: session.dungeonId,
-      playerTeam: playerTeam,
-      aiTeam: [currentEnemy],
-      currentPlayerPokemon: playerTeam[0], // Premier Pokémon par défaut
-      currentAiPokemon: currentEnemy,
-      turn: 1,
-      phase: 'SELECTION',
-      aiDefeatedCount: 0
-    };
-
-    // Sauvegarder la bataille
-    battleService.updateBattle(battleState);
-    session.currentBattleId = battleState.battleId;
-    session.status = 'BATTLE';
-    dungeonSessions.set(session.sessionId, session);
-    
-    ws.battleId = battleState.battleId;
-
-    ws.send(JSON.stringify({
-      type: 'DUNGEON_BATTLE_START',
-      data: {
-        battleId: battleState.battleId,
-        enemy: {
-          id: currentEnemy.id,
-          name: currentEnemy.name,
-          level: currentEnemy.level,
-          hp: currentEnemy.hp,
-          maxHp: currentEnemy.maxHp
-        },
-        playerTeam: playerTeam.map(p => ({
-          id: p.id,
-          name: p.name,
-          level: p.level,
-          hp: p.hp,
-          maxHp: p.maxHp
-        })),
-        enemyNumber: enemyIndex + 1,
-        totalEnemies: session.enemyPokemons.length,
-        message: `Combat ${enemyIndex + 1}/3 : ${currentEnemy.name} niveau ${currentEnemy.level} apparaît !`
-      }
-    }));
-
-  } catch (error) {
-    console.error('[DUNGEON] Erreur lors du démarrage du combat:', error);
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: `Erreur lors du démarrage du combat: ${(error as Error).message}`
-    }));
-  }
-}
-
-async function handleDungeonAttack(ws: AuthenticatedWebSocket, data: { moveId: number, pokemonId?: string }) {
-  if (!ws.battleId) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Aucun combat en cours'
-    }));
-    return;
-  }
-
-  const battleState = battleService.getBattle(ws.battleId);
-  if (!battleState) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Combat introuvable'
-    }));
-    return;
-  }
-
-  // Utiliser la logique de combat existante (similaire à battle.ws.ts)
-  // Pour simplifier, on réutilise la logique d'attaque du système de combat
-  const playerMove = battleState.currentPlayerPokemon.moves.find(m => m.id === data.moveId);
-  if (!playerMove || playerMove.pp <= 0) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Attaque invalide ou PP épuisés'
-    }));
-    return;
-  }
-
-  const aiMove = battleService.selectAiMove(battleState.currentAiPokemon);
-  
-  // Exécuter le combat
-  const playerFirst = 
-    playerMove.priority > aiMove.priority ||
-    (playerMove.priority === aiMove.priority && 
-     battleState.currentPlayerPokemon.speed >= battleState.currentAiPokemon.speed);
-
-  const results = [];
-  
-  if (playerFirst) {
-    const playerResult = battleService.executeAttack(
-      battleState.currentPlayerPokemon,
-      battleState.currentAiPokemon,
-      playerMove
-    );
-    results.push(playerResult);
-
-    if (!playerResult.isKO) {
-      const aiResult = battleService.executeAttack(
-        battleState.currentAiPokemon,
-        battleState.currentPlayerPokemon,
-        aiMove
-      );
-      results.push(aiResult);
-    }
-  } else {
-    const aiResult = battleService.executeAttack(
-      battleState.currentAiPokemon,
-      battleState.currentPlayerPokemon,
-      aiMove
-    );
-    results.push(aiResult);
-
-    if (!aiResult.isKO) {
-      const playerResult = battleService.executeAttack(
-        battleState.currentPlayerPokemon,
-        battleState.currentAiPokemon,
-        playerMove
-      );
-      results.push(playerResult);
-    }
-  }
-
-  battleState.turn++;
-  battleService.updateBattle(battleState);
-
-  ws.send(JSON.stringify({
-    type: 'DUNGEON_BATTLE_RESULT',
-    data: {
-      results,
-      playerPokemon: battleState.currentPlayerPokemon,
-      enemyPokemon: battleState.currentAiPokemon,
-      turn: battleState.turn
-    }
-  }));
-
-  // Vérifier si le combat est terminé
-  await handleDungeonBattleEnd(ws, battleState);
-}
-
-async function handleDungeonBattleEnd(ws: AuthenticatedWebSocket, battleState: IBattleState) {
-  const sessionId = battleState.trainerId; // Utiliser seulement le trainerId
-  const session = dungeonSessions.get(sessionId);
-  
-  if (!session) return;
-
-  // Si l'ennemi est KO
-  if (battleState.currentAiPokemon.hp === 0) {
-    session.defeatedEnemies = (session.defeatedEnemies || 0) + 1;
-    
-    if (session.defeatedEnemies >= 3) {
-      // Tous les ennemis sont battus - Donjon terminé !
-      session.status = 'COMPLETED';
-      const dungeonData = AVAILABLE_DUNGEONS.find(d => d.id === session.dungeonId);
-      
-      ws.send(JSON.stringify({
-        type: 'DUNGEON_COMPLETED',
-        data: {
-          message: `Félicitations ! Vous avez terminé ${dungeonData?.name} !`,
-          rewards: dungeonData?.rewards || 'Récompenses inconnues',
-          defeatedEnemies: session.defeatedEnemies
-        }
-      }));
-      
-      battleService.deleteBattle(battleState.battleId);
-      dungeonSessions.delete(sessionId);
-    } else {
-      // Passer au prochain ennemi
-      ws.send(JSON.stringify({
-        type: 'DUNGEON_ENEMY_DEFEATED',
-        data: {
-          message: `${battleState.currentAiPokemon.name} est vaincu !`,
-          defeatedEnemies: session.defeatedEnemies,
-          nextEnemy: session.defeatedEnemies + 1
-        }
-      }));
-      
-      battleService.deleteBattle(battleState.battleId);
-      await startDungeonBattle(ws, session, session.defeatedEnemies);
-    }
-  }
-  
-  // Si le joueur est KO
-  if (battleState.currentPlayerPokemon.hp === 0) {
-    const alivePokemon = battleState.playerTeam.filter(p => p.hp > 0);
-    
-    if (alivePokemon.length === 0) {
-      // Défaite - Donjon échoué
-      session.status = 'READY'; // Permet de recommencer
-      
-      ws.send(JSON.stringify({
-        type: 'DUNGEON_FAILED',
-        data: {
-          message: 'Tous vos Pokémon sont KO ! Exploration échouée.',
-          defeatedEnemies: session.defeatedEnemies || 0
-        }
-      }));
-      
-      battleService.deleteBattle(battleState.battleId);
-    } else {
-      // Demander de changer de Pokémon
-      ws.send(JSON.stringify({
-        type: 'DUNGEON_FORCE_SWITCH',
-        data: {
-          availablePokemon: alivePokemon,
-          message: `${battleState.currentPlayerPokemon.name} est KO ! Choisissez un autre Pokémon.`
-        }
-      }));
-    }
-  }
-}
-
-async function handleDungeonSwitch(ws: AuthenticatedWebSocket, data: { pokemonId: string }) {
-  if (!ws.battleId) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Aucun combat en cours'
-    }));
-    return;
-  }
-
-  const battleState = battleService.getBattle(ws.battleId);
-  if (!battleState) return;
-
-  const newPokemon = battleState.playerTeam.find(p => p.id === data.pokemonId && p.hp > 0);
-  if (!newPokemon) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Pokémon invalide ou KO'
-    }));
-    return;
-  }
-
-  battleState.currentPlayerPokemon = newPokemon;
-  battleState.phase = 'ATTACK';
-  battleService.updateBattle(battleState);
-
-  ws.send(JSON.stringify({
-    type: 'DUNGEON_POKEMON_SWITCHED',
-    data: {
-      newPokemon: battleState.currentPlayerPokemon,
-      message: `${newPokemon.name} entre en combat !`
-    }
-  }));
-}
-
-async function handleGetDungeonInfo(ws: AuthenticatedWebSocket, data: { dungeonId: number }) {
-  if (!ws.trainerId) {
-    ws.send(JSON.stringify({
-      type: 'ERROR',
-      message: 'Non authentifié'
-    }));
-    return;
-  }
-
-  try {
-    const sessionId = ws.trainerId; // Utiliser seulement le trainerId
-    const session = dungeonSessions.get(sessionId);
-
+    // Vérifier qu'il y a une session active
+    const session = await dungeonService.getActiveSession(ws.trainerId);
     if (!session) {
       ws.send(JSON.stringify({
         type: 'ERROR',
-        message: 'Aucune session active pour ce donjon'
+        error: 'Aucune session de donjon active. Utilisez ENTER_DUNGEON d\'abord.',
+        code: 'NO_ACTIVE_SESSION'
       }));
       return;
     }
 
-    // Informations basiques du donjon (à étendre plus tard)
-    const dungeonInfo = {
-      dungeonId: session.dungeonId,
-      name: `Donjon ${session.dungeonId}`,
-      difficulty: getDungeonDifficulty(session.dungeonId),
-      recommendedLevel: getRecommendedLevel(session.dungeonId),
-      description: `Exploration du donjon numéro ${session.dungeonId}`
+    // Récupérer les vraies données du Pokémon du joueur
+    const trainerPokemons = await pokemonService.listOwnedPokemonsByTrainer(ws.trainerId);
+    const selectedPokemon = trainerPokemons.find(p => p.id === selectedPokemonId);
+    
+    if (!selectedPokemon) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Pokémon non trouvé',
+        code: 'POKEMON_NOT_FOUND'
+      }));
+      return;
+    }
+
+    // Calculer les vraies stats du Pokémon joueur
+    const playerLevel = selectedPokemon.level;
+    const playerMaxHp = Math.floor((45 * 2 * playerLevel) / 100 + playerLevel + 10) + selectedPokemon.boostPv;
+    const playerAttack = Math.floor((49 * 2 * playerLevel) / 100 + 5) + selectedPokemon.boostAtk;
+    const playerDefense = Math.floor((49 * 2 * playerLevel) / 100 + 5) + selectedPokemon.boostDef;
+    const playerSpeed = Math.floor((45 * 2 * playerLevel) / 100 + 5);
+
+    // Noms des pokémons les plus communs
+    const pokemonNames: { [key: number]: string } = {
+      1: 'Bulbizarre', 4: 'Salamèche', 7: 'Carapuce', 15: 'Dardargnan', 25: 'Pikachu', 
+      39: 'Rondoudou', 41: 'Nosferapti', 52: 'Miaouss', 53: 'Persian', 54: 'Psykokwak', 58: 'Caninos', 60: 'Ptitard', 
+      63: 'Abra', 66: 'Machoc', 69: 'Chétiflor', 72: 'Tentacool', 74: 'Racaillou', 
+      81: 'Magnéti', 84: 'Doduo', 86: 'Otaria', 90: 'Kokiyas', 92: 'Fantominus',
+      95: 'Onix', 100: 'Voltorbe', 102: 'Noeunoeuf', 103: 'Noadkoko', 104: 'Osselait', 
+      107: 'Tygnon', 109: 'Smogo', 111: 'Rhinocorne', 116: 'Hypotrempe', 118: 'Poissirène', 120: 'Stari', 
+      129: 'Magicarpe', 131: 'Lokhlass', 133: 'Évoli', 136: 'Pyroli', 138: 'Amonita', 
+      140: 'Kabuto', 142: 'Ptéra', 144: 'Artikodin', 147: 'Minidraco', 151: 'Mew'
     };
 
+    // Créer le Pokémon joueur pour le combat
+    const playerPokemon: IBattlePokemon = {
+      id: selectedPokemon.id,
+      name: pokemonNames[selectedPokemon.pokedexId] || `Pokémon ${selectedPokemon.pokedexId}`,
+      level: selectedPokemon.level,
+      hp: playerMaxHp, // HP complets au début du combat
+      maxHp: playerMaxHp,
+      attack: playerAttack,
+      defense: playerDefense,
+      speed: playerSpeed,
+      moves: [
+        { id: 1, name: 'Charge', power: 40, accuracy: 100, pp: 35, priority: 0 },
+        { id: 2, name: 'Griffe', power: 35, accuracy: 95, pp: 30, priority: 0 }
+      ]
+    };
+
+    // Récupérer les ennemis stockés dans la session
+    console.log(`[DUNGEON] Session enemyPokemons:`, session.enemyPokemons ? 'EXISTS' : 'NULL');
+    console.log(`[DUNGEON] Enemy count in session:`, session.enemyPokemons?.length || 0);
+    
+    if (!session.enemyPokemons || session.enemyPokemons.length === 0) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Aucun ennemi trouvé dans la session. Relancez ENTER_DUNGEON.',
+        code: 'NO_ENEMIES_IN_SESSION'
+      }));
+      return;
+    }
+
+    // Déterminer quel ennemi combattre (basé sur les ennemis déjà battus)
+    const defeatedCount = session.defeatedEnemies || 0;
+    
+    if (defeatedCount >= session.enemyPokemons.length) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Tous les ennemis ont déjà été battus. Donjon terminé !',
+        code: 'DUNGEON_COMPLETED'
+      }));
+      return;
+    }
+
+    // Récupérer l'ennemi actuel depuis la session
+    const currentEnemy = session.enemyPokemons[defeatedCount];
+
+    // Vérifier s'il y a un combat en cours avec cet ennemi (pour préserver les HP)
+    const existingBattle = Array.from(activeBattles.values()).find(
+      battle => battle.trainerId === ws.trainerId && battle.enemyPokemon.id === currentEnemy.id
+    );
+
+    // Créer l'ennemi pour le combat (tous sont des IPokemonAdversaire dans la session)
+    const enemy = currentEnemy as any; // IPokemonAdversaire
+    
+    // Maintenant tous les ennemis (y compris boss) ont des moves
+    const enemyMoves = enemy.moves.map((move: any) => ({
+      id: move.id,
+      name: move.name,
+      power: move.power || 40,
+      accuracy: move.accuracy || 100,
+      pp: move.pp,
+      priority: move.priority
+    }));
+    
+    const enemyPokemon: IBattlePokemon = {
+      id: enemy.id,
+      name: enemy.name,
+      level: enemy.level,
+      // ✅ Préserver les HP si c'est un changement de pokémon
+      hp: existingBattle ? existingBattle.enemyPokemon.hp : enemy.hp,
+      maxHp: enemy.maxHp,
+      attack: enemy.stats.attack,
+      defense: enemy.stats.defense,
+      speed: enemy.stats.speed,
+      moves: enemyMoves
+    };
+
+    // Nettoyer l'ancien combat s'il existe
+    if (existingBattle) {
+      activeBattles.delete(existingBattle.battleId);
+      console.log(`[DUNGEON] Preserved enemy HP: ${enemyPokemon.hp}/${enemyPokemon.maxHp}`);
+    }
+
+    // Créer l'état du combat
+    const battleId = `battle_${ws.trainerId}_${Date.now()}`;
+    const battleState: IBattleState = {
+      battleId,
+      trainerId: ws.trainerId,
+      playerPokemon,
+      enemyPokemon,
+      turn: 1,
+      isActive: true,
+      ws
+    };
+
+    // Stocker le combat
+    activeBattles.set(battleId, battleState);
+
+    // Envoyer le début du combat
+    const enemyNumber = defeatedCount + 1;
+    const totalEnemies = session.enemyPokemons.length;
+    const isBoss = defeatedCount === (session.enemyPokemons.length - 1); // Le dernier est le boss
+    
     ws.send(JSON.stringify({
-      type: 'DUNGEON_INFO',
+      type: 'BATTLE_STARTED',
       data: {
-        ...dungeonInfo,
-        session: {
-          status: session.status,
-          selectedPokemonCount: session.selectedPokemon.length
-        },
-        message: `Informations du ${dungeonInfo.name} récupérées`
+        playerPokemon,
+        enemyPokemon,
+        battleId,
+        enemyNumber,
+        totalEnemies,
+        isBoss,
+        message: isBoss 
+          ? `Combat final contre le Boss ${enemyPokemon.name} niveau ${enemyPokemon.level} !`
+          : `Combat ${enemyNumber}/${totalEnemies} contre ${enemyPokemon.name} niveau ${enemyPokemon.level} !`
       }
     }));
 
+    console.log(`[DUNGEON] ${ws.trainerId} started fight with Pokemon: ${selectedPokemonId}`);
+
+    // Démarrer la boucle de combat automatique après 2 secondes
+    setTimeout(() => {
+      startBattleLoop(battleId);
+    }, 2000);
+
   } catch (error) {
+    console.error('[DUNGEON] Error in handleStartFight:', error);
     ws.send(JSON.stringify({
       type: 'ERROR',
-      message: `Erreur lors de la récupération des informations: ${(error as Error).message}`
+      error: `Erreur lors du démarrage du combat: ${(error as Error).message}`,
+      code: 'FIGHT_START_ERROR'
     }));
   }
 }
 
-// Fonctions utilitaires (à adapter selon tes besoins)
-function getDungeonDifficulty(dungeonId: number): string {
-  if (dungeonId <= 5) return 'FACILE';
-  if (dungeonId <= 10) return 'MOYEN';
-  if (dungeonId <= 15) return 'DIFFICILE';
-  return 'TRÈS DIFFICILE';
+// Fonction principale de la boucle de combat
+async function startBattleLoop(battleId: string) {
+  const battle = activeBattles.get(battleId);
+  if (!battle || !battle.isActive) return;
+
+  console.log(`[BATTLE] Starting turn ${battle.turn} for battle ${battleId}`);
+
+  // Choisir les attaques aléatoirement
+  const playerMove = getRandomMove(battle.playerPokemon);
+  const enemyMove = getRandomMove(battle.enemyPokemon);
+
+  // Déterminer l'ordre d'attaque (priorité puis vitesse)
+  const attackOrder = determineAttackOrder(
+    { pokemon: battle.playerPokemon, move: playerMove, isPlayer: true },
+    { pokemon: battle.enemyPokemon, move: enemyMove, isPlayer: false }
+  );
+
+  // Exécuter les attaques dans l'ordre
+  for (let i = 0; i < attackOrder.length; i++) {
+    const attacker = attackOrder[i];
+    const defender = attacker.isPlayer ? battle.enemyPokemon : battle.playerPokemon;
+    
+    // Vérifier si le Pokémon attaquant est encore vivant
+    if (attacker.pokemon.hp <= 0) continue;
+
+    // Calculer les dégâts
+    const damage = calculateDamage(attacker.pokemon, defender, attacker.move);
+    const isCritical = Math.random() < 0.1; // 10% de chance de critique
+    const finalDamage = isCritical ? Math.floor(damage * 1.5) : damage;
+
+    // Appliquer les dégâts
+    defender.hp = Math.max(0, defender.hp - finalDamage);
+
+    // Envoyer le message d'attaque
+    battle.ws.send(JSON.stringify({
+      type: 'ATTACK_RESULT',
+      data: {
+        turn: battle.turn,
+        attacker: {
+          id: attacker.pokemon.id,
+          name: attacker.pokemon.name,
+          isPlayer: attacker.isPlayer
+        },
+        defender: {
+          id: defender.id,
+          name: defender.name,
+          isPlayer: !attacker.isPlayer
+        },
+        move: attacker.move,
+        damage: finalDamage,
+        isCritical,
+        remainingHp: defender.hp,
+        maxHp: defender.maxHp,
+        message: `${attacker.pokemon.name} utilise ${attacker.move.name} et inflige ${finalDamage} dégâts !${isCritical ? ' Coup critique !' : ''}`
+      }
+    }));
+
+    console.log(`[BATTLE] ${attacker.pokemon.name} attacks with ${attacker.move.name} for ${finalDamage} damage. ${defender.name} HP: ${defender.hp}/${defender.maxHp}`);
+
+    // Vérifier si le défenseur est KO
+    if (defender.hp <= 0) {
+      // Pokémon KO - arrêter le combat temporairement
+      battle.isActive = false;
+      
+      setTimeout(async () => {
+        battle.ws.send(JSON.stringify({
+          type: 'POKEMON_KO',
+          data: {
+            koedPokemon: {
+              id: defender.id,
+              name: defender.name,
+              isPlayer: !attacker.isPlayer
+            },
+            winner: {
+              id: attacker.pokemon.id,
+              name: attacker.pokemon.name,
+              isPlayer: attacker.isPlayer
+            },
+            message: `${defender.name} est KO ! ${attacker.pokemon.name} remporte le combat !`
+          }
+        }));
+
+        if (attacker.isPlayer) {
+          // Le joueur gagne - mettre à jour le compteur et enchaîner automatiquement
+          await updateDefeatedEnemiesCount(battle.trainerId);
+          await handlePlayerVictory(battle.trainerId, battleId);
+        } else {
+          // Le bot gagne - vérifier si le joueur peut changer de pokémon
+          await handlePlayerDefeat(battle.trainerId, battleId);
+        }
+      }, 1000);
+
+      return; // Sortir de la boucle
+    }
+
+    // Délai entre les attaques
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  // Incrémenter le tour
+  battle.turn++;
+
+  // Continuer la boucle si le combat est toujours actif
+  if (battle.isActive && battle.playerPokemon.hp > 0 && battle.enemyPokemon.hp > 0) {
+    setTimeout(() => {
+      startBattleLoop(battleId);
+    }, 1000); // Délai entre les tours
+  }
 }
 
-function getRecommendedLevel(dungeonId: number): number {
-  return Math.min(10 + (dungeonId * 5), 100);
+// Fonctions utilitaires
+function getRandomMove(pokemon: IBattlePokemon): IBattleMove {
+  const availableMoves = pokemon.moves.filter(move => move.pp > 0);
+  if (availableMoves.length === 0) {
+    // Attaque par défaut si plus de PP
+    return { id: 0, name: 'Lutte', power: 20, accuracy: 100, pp: 1, priority: 0 };
+  }
+  return availableMoves[Math.floor(Math.random() * availableMoves.length)];
 }
 
-// Fonction pour récupérer une session (utile pour d'autres parties du code)
-export function getDungeonSession(trainerId: string, dungeonId: number): IDungeonSession | undefined {
-  const sessionId = trainerId; // Utiliser seulement le trainerId
-  return dungeonSessions.get(sessionId);
+function determineAttackOrder(
+  playerAction: { pokemon: IBattlePokemon; move: IBattleMove; isPlayer: boolean },
+  enemyAction: { pokemon: IBattlePokemon; move: IBattleMove; isPlayer: boolean }
+): Array<{ pokemon: IBattlePokemon; move: IBattleMove; isPlayer: boolean }> {
+  
+  // Comparer les priorités
+  if (playerAction.move.priority > enemyAction.move.priority) {
+    return [playerAction, enemyAction];
+  } else if (enemyAction.move.priority > playerAction.move.priority) {
+    return [enemyAction, playerAction];
+  } else {
+    // Même priorité - comparer la vitesse
+    if (playerAction.pokemon.speed >= enemyAction.pokemon.speed) {
+      return [playerAction, enemyAction];
+    } else {
+      return [enemyAction, playerAction];
+    }
+  }
 }
 
-// Fonction pour supprimer une session
-export function deleteDungeonSession(trainerId: string, dungeonId: number): boolean {
-  const sessionId = trainerId; // Utiliser seulement le trainerId
-  return dungeonSessions.delete(sessionId);
+function calculateDamage(attacker: IBattlePokemon, defender: IBattlePokemon, move: IBattleMove): number {
+  if (move.power === 0) return 0;
+  
+  // Formule simplifiée de calcul de dégâts
+  const attack = attacker.attack;
+  const defense = defender.defense;
+  const power = move.power;
+  const level = attacker.level;
+
+  // Formule basique : ((2 * level + 10) / 250) * (attack / defense) * power + 2
+  const baseDamage = Math.floor(((2 * level + 10) / 250) * (attack / defense) * power + 2);
+  
+  // Ajouter un facteur aléatoire (85% - 100%)
+  const randomFactor = 0.85 + Math.random() * 0.15;
+  
+  return Math.max(1, Math.floor(baseDamage * randomFactor));
 }
+
+// Fonction pour mettre à jour le compteur d'ennemis battus
+async function updateDefeatedEnemiesCount(trainerId: string): Promise<void> {
+  try {
+    const session = await dungeonService.getActiveSession(trainerId);
+    if (!session) return;
+
+    const newDefeatedCount = (session.defeatedEnemies || 0) + 1;
+    const totalEnemies = session.enemyPokemons?.length || 0;
+
+    if (newDefeatedCount >= totalEnemies) {
+      // Donjon terminé
+      await dungeonService.updateSessionStatus(trainerId, 'COMPLETED', newDefeatedCount);
+      console.log(`[DUNGEON] ${trainerId} completed dungeon! All enemies defeated.`);
+    } else {
+      // Continuer le donjon
+      await dungeonService.updateSessionStatus(trainerId, 'IN_PROGRESS', newDefeatedCount);
+      console.log(`[DUNGEON] ${trainerId} defeated enemy ${newDefeatedCount}/${totalEnemies}`);
+    }
+  } catch (error) {
+    console.error('[DUNGEON] Error updating defeated enemies count:', error);
+  }
+}
+
+// Fonction pour gérer la victoire du joueur
+async function handlePlayerVictory(trainerId: string, battleId: string): Promise<void> {
+  try {
+    const session = await dungeonService.getActiveSession(trainerId);
+    if (!session) {
+      console.error(`[DUNGEON] No active session found for trainer ${trainerId}`);
+      return;
+    }
+
+    const battle = activeBattles.get(battleId);
+    if (!battle) {
+      console.error(`[DUNGEON] Battle ${battleId} not found`);
+      return;
+    }
+
+    const defeatedCount = session.defeatedEnemies || 0;
+    const totalEnemies = session.enemyPokemons?.length || 0;
+
+    if (defeatedCount >= totalEnemies) {
+      // Donjon terminé avec victoire - récupérer les vraies récompenses
+      const dungeonInfo = await dungeonService.generateDungeonInfo(session.dungeonId);
+      const rewards = dungeonInfo ? dungeonInfo.dynamicRewards : {
+        money: 500,
+        experience: 1000,
+        items: [
+          { name: 'Potion', quantity: 2, rarity: 'common' },
+          { name: 'Super Ball', quantity: 1, rarity: 'uncommon' }
+        ]
+      };
+
+      battle.ws.send(JSON.stringify({
+        type: 'DUNGEON_COMPLETED_WIN',
+        data: {
+          message: '🎉 Félicitations ! Vous avez terminé le donjon !',
+          defeatedEnemies: defeatedCount,
+          totalEnemies,
+          rewards: {
+            money: rewards.money,
+            experience: rewards.experience,
+            items: rewards.items
+          },
+          dungeonName: dungeonInfo?.dungeon.name || 'Donjon Mystérieux'
+        }
+      }));
+      
+      // Nettoyer le combat
+      activeBattles.delete(battleId);
+      console.log(`[DUNGEON] ${trainerId} completed dungeon! All enemies defeated.`);
+    } else {
+      // Enchaîner automatiquement avec le prochain ennemi
+      battle.ws.send(JSON.stringify({
+        type: 'ENEMY_DEFEATED',
+        data: {
+          message: `Ennemi ${defeatedCount}/${totalEnemies} vaincu ! Combat suivant dans 3 secondes...`,
+          defeatedEnemies: defeatedCount,
+          totalEnemies,
+          nextBattleDelay: 3000
+        }
+      }));
+
+      // Nettoyer le combat actuel
+      activeBattles.delete(battleId);
+      
+      // Relancer automatiquement le prochain combat après 3 secondes
+      setTimeout(() => {
+        console.log(`[DUNGEON] Auto-starting next fight for ${trainerId}`);
+        // Relancer automatiquement avec le même pokémon
+        const lastSelectedPokemon = battle.playerPokemon.id;
+        handleStartFight(battle.ws, { data: { selectedPokemonId: lastSelectedPokemon } });
+      }, 3000);
+    }
+  } catch (error) {
+    console.error('[DUNGEON] Error in handlePlayerVictory:', error);
+  }
+}
+
+// Fonction pour gérer la défaite du joueur
+async function handlePlayerDefeat(trainerId: string, battleId: string): Promise<void> {
+  try {
+    const battle = activeBattles.get(battleId);
+    if (!battle) {
+      console.error(`[DUNGEON] Battle ${battleId} not found`);
+      return;
+    }
+
+    // Récupérer l'équipe du joueur sélectionnée pour le donjon
+    const session = await dungeonService.getActiveSession(trainerId);
+    if (!session || !session.selectedPokemon) {
+      // Aucune session active - erreur
+      battle.ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Session de donjon introuvable',
+        code: 'NO_ACTIVE_SESSION'
+      }));
+      
+      activeBattles.delete(battleId);
+      return;
+    }
+
+    // Ajouter le pokémon KO à la liste des morts
+    await dungeonService.addDeadPokemon(trainerId, battle.playerPokemon.id);
+
+    // Récupérer tous les pokémon de l'équipe sélectionnée sauf ceux qui sont morts
+    const playerPokemons = await pokemonService.listOwnedPokemonsByTrainer(trainerId);
+    const selectedPokemonIds = session.selectedPokemon;
+    const deadPokemonIds = session.deadPokemonIds || [];
+    const availablePokemons = playerPokemons.filter((pokemon: any) => 
+      selectedPokemonIds.includes(pokemon.id) && !deadPokemonIds.includes(pokemon.id) && pokemon.id !== battle.playerPokemon.id
+    );
+
+    if (availablePokemons.length === 0) {
+      // Aucun pokémon disponible dans l'équipe - défaite
+      battle.ws.send(JSON.stringify({
+        type: 'DUNGEON_COMPLETED_LOOSE',
+        data: {
+          message: '💀 Tous vos Pokémon de l\'équipe sont KO ! Vous avez perdu le combat.',
+          canRetry: true
+        }
+      }));
+      
+      // Nettoyer le combat
+      activeBattles.delete(battleId);
+      console.log(`[DUNGEON] ${trainerId} defeated - no more pokemon available in team`);
+    } else {
+      // Le joueur peut changer de pokémon - attendre un peu après POKEMON_KO
+      const playerPokemonName = battle.playerPokemon.name;
+      const ws = battle.ws;
+      
+      console.log(`[DUNGEON] ${trainerId} has ${availablePokemons.length} pokemon available for switch`);
+      
+      setTimeout(async () => {
+        console.log(`[DUNGEON] 🔄 Sending FORCE_POKEMON_SWITCH to ${trainerId}`);
+        
+        // Récupérer les vrais noms des pokémons disponibles (même mapping que plus haut)
+        const pokemonNamesMap: { [key: number]: string } = {
+          1: 'Bulbizarre', 4: 'Salamèche', 7: 'Carapuce', 15: 'Dardargnan', 25: 'Pikachu', 
+          39: 'Rondoudou', 41: 'Nosferapti', 52: 'Miaouss', 53: 'Persian', 54: 'Psykokwak', 58: 'Caninos', 60: 'Ptitard', 
+          63: 'Abra', 66: 'Machoc', 69: 'Chétiflor', 72: 'Tentacool', 74: 'Racaillou', 
+          81: 'Magnéti', 84: 'Doduo', 86: 'Otaria', 90: 'Kokiyas', 92: 'Fantominus',
+          95: 'Onix', 100: 'Voltorbe', 102: 'Noeunoeuf', 103: 'Noadkoko', 104: 'Osselait', 
+          107: 'Tygnon', 109: 'Smogo', 111: 'Rhinocorne', 116: 'Hypotrempe', 118: 'Poissirène', 120: 'Stari', 
+          129: 'Magicarpe', 131: 'Lokhlass', 133: 'Évoli', 136: 'Pyroli', 138: 'Amonita', 
+          140: 'Kabuto', 142: 'Ptéra', 144: 'Artikodin', 147: 'Minidraco', 151: 'Mew',
+          152: 'Germignon', 155: 'Héricendre', 158: 'Kaiminus'
+        };
+        
+        const pokemonWithNames = availablePokemons.map((pokemon: any) => ({
+          id: pokemon.id,
+          pokedexId: pokemon.pokedexId,
+          name: pokemonNamesMap[pokemon.pokedexId] || `Pokémon ${pokemon.pokedexId}`,
+          level: pokemon.level
+        }));
+        
+        ws.send(JSON.stringify({
+          type: 'FORCE_POKEMON_SWITCH',
+          data: {
+            message: `${playerPokemonName} est KO ! Choisissez un nouveau Pokémon.`,
+            availablePokemons: pokemonWithNames,
+            battleId: battleId
+          }
+        }));
+        
+        console.log(`[DUNGEON] ✅ FORCE_POKEMON_SWITCH sent with ${availablePokemons.length} options`);
+      }, 1500); // Délai de 1.5 secondes après POKEMON_KO
+      
+      // NE PAS supprimer le combat ici - il sera supprimé après le changement de pokémon
+    }
+  } catch (error) {
+    console.error('[DUNGEON] Error in handlePlayerDefeat:', error);
+  }
+}
+
+async function handleChangePokemon(ws: AuthenticatedWebSocket, message: any) {
+  if (!ws.trainerId) {
+    ws.send(JSON.stringify({
+      type: 'ERROR',
+      error: 'Non authentifié',
+      code: 'UNAUTHORIZED'
+    }));
+    return;
+  }
+
+  try {
+    const { newPokemonId, battleId } = message.data || {};
+    
+    if (!newPokemonId) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'ID du nouveau Pokémon requis',
+        code: 'MISSING_POKEMON_ID'
+      }));
+      return;
+    }
+
+    if (!battleId) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'ID du combat requis',
+        code: 'MISSING_BATTLE_ID'
+      }));
+      return;
+    }
+
+    // Vérifier que le pokémon appartient au joueur et est dans l'équipe sélectionnée
+    const session = await dungeonService.getActiveSession(ws.trainerId);
+    if (!session || !session.selectedPokemon || !session.selectedPokemon.includes(newPokemonId)) {
+      ws.send(JSON.stringify({
+        type: 'ERROR',
+        error: 'Pokémon non disponible pour ce donjon',
+        code: 'POKEMON_NOT_AVAILABLE'
+      }));
+      return;
+    }
+
+    console.log(`[DUNGEON] ${ws.trainerId} switched to Pokemon: ${newPokemonId}`);
+
+    // Redémarrer directement le combat avec le nouveau pokémon
+    // (l'ancien combat sera automatiquement nettoyé dans handleStartFight)
+    handleStartFight(ws, { data: { selectedPokemonId: newPokemonId } });
+
+  } catch (error) {
+    console.error('[DUNGEON] Error in handleChangePokemon:', error);
+    ws.send(JSON.stringify({
+      type: 'ERROR',
+      error: `Erreur lors du changement de Pokémon: ${(error as Error).message}`,
+      code: 'POKEMON_CHANGE_ERROR'
+    }));
+  }
+}
+

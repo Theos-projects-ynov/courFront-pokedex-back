@@ -61,7 +61,13 @@ export async function attemptCapture(trainerId: string, zone: number) {
   }
 
   const baseRate = (attempt.data as any)?.catch_rate ?? 35;
-  const success = Math.random() < baseRate / 255;
+  // Augmentation du taux de capture de 50%
+  const captureRate = Math.min((baseRate / 255) * 1.5, 0.95); // Cap à 95% max
+  const capturePercentage = (captureRate * 100).toFixed(1);
+  
+  console.log(`[CAPTURE] Taux de capture: ${capturePercentage}% (base: ${baseRate}/255)`);
+  
+  const success = Math.random() < captureRate;
 
 
   if (!success) {
