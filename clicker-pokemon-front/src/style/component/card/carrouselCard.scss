@@ -1,0 +1,16 @@
+.carrousel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 25px;
+
+  .carrousel-card__container {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+
+    img {
+      cursor: pointer;
+    }
+  }
+}

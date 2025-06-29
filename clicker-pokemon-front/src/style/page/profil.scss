@@ -1,0 +1,243 @@
+.profil-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #242424;
+  color: #fff;
+  padding: 2rem;
+
+  .profil-container {
+    max-width: 800px;
+    margin: 0 auto;
+    
+    .profil-card {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+        0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 2rem;
+
+      .profil-header {
+        text-align: center;
+        margin-bottom: 2rem;
+
+        .profil-name {
+          color: #fff;
+          margin-bottom: 0.5rem;
+        }
+      }
+
+      .profil-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+
+        .info-card {
+          background-color: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+
+          &.full-width {
+            grid-column: 1 / -1;
+          }
+
+          .MuiCardContent-root {
+            padding: 1.5rem;
+          }
+
+          .MuiTypography-h6 {
+            color: #fff;
+            margin-bottom: 1rem;
+          }
+
+          .info-item {
+            margin-bottom: 1rem;
+            
+            &:last-child {
+              margin-bottom: 0;
+            }
+
+            .MuiTypography-body2 {
+              color: #aaa;
+              margin-bottom: 0.25rem;
+            }
+
+            .MuiTypography-body1 {
+              color: #fff;
+            }
+
+            .MuiTypography-h5 {
+              color: #1976d2;
+            }
+          }
+        }
+
+        .pokemon-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 1rem;
+          margin-top: 1rem;
+
+          &.recent-pokemon {
+            grid-template-columns: repeat(6, 1fr);
+            max-width: 100%;
+            
+            @media (max-width: 768px) {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 0.5rem;
+            }
+          }
+
+          .pokemon-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+            &:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+
+            .pokemon-header {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              margin-bottom: 1rem;
+
+              .pokemon-name {
+                color: #fff;
+                font-weight: bold;
+                margin-bottom: 1rem;
+                text-align: center;
+              }
+
+              .pokemon-slot {
+                width: 60px;
+                height: 60px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(255, 255, 255, 0.05);
+                position: relative;
+
+                .pokemon-image {
+                  width: 50px;
+                  height: 50px;
+                  border-radius: 4px;
+                  object-fit: contain;
+                  background-color: rgba(255, 255, 255, 0.05);
+                  transition: transform 0.2s ease;
+
+                  &:hover {
+                    transform: scale(1.1);
+                  }
+                }
+              }
+            }
+
+            .pokemon-details {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+
+              .MuiTypography-body2 {
+                color: #aaa;
+              }
+
+              .MuiChip-root {
+                &.MuiChip-colorPrimary {
+                  background-color: #1976d2;
+                  color: #fff;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .profil-actions {
+        text-align: center;
+        margin-top: 2rem;
+
+        .MuiButton-root {
+          min-width: 200px;
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .profil-page {
+    padding: 1rem;
+
+    .profil-container {
+      .profil-card {
+        padding: 1.5rem;
+
+        .profil-info {
+          grid-template-columns: 1fr;
+
+          .pokemon-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animation pour l'apparition
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profil-card {
+  animation: fadeIn 0.6s ease-out;
+}
+
+// Styles spécifiques Material-UI
+.MuiTypography-body1,
+.MuiTypography-body2,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6 {
+  color: inherit;
+}
+
+.MuiChip-root {
+  &.MuiChip-colorPrimary {
+    background-color: #1976d2;
+    color: #fff;
+  }
+
+  &.MuiChip-colorSecondary {
+    background-color: #9c27b0;
+    color: #fff;
+  }
+
+  &.MuiChip-outlined {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+  }
+}
+
+.MuiLinearProgress-root {
+  background-color: rgba(255, 255, 255, 0.1);
+
+  .MuiLinearProgress-bar {
+    background-color: #1976d2;
+  }
+} 

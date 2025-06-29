@@ -1,0 +1,137 @@
+.profil-page__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+  }
+
+  &__image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 20px;
+    border: 3px solid #007bff;
+
+    @media (max-width: 768px) {
+      margin-right: 0;
+      margin-bottom: 20px;
+    }
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+
+    p {
+      background-color: #f0f0f0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+  }
+
+  h2 {
+    color: #007bff;
+    margin-bottom: 15px;
+  }
+
+  h3 {
+    color: #007bff;
+    margin: 20px 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  
+  .profil-page__card__teams {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    justify-content: center;
+    width: 100%;
+    max-width: 600px;
+    min-height: auto;
+    background-color: #282c34;
+    padding: 20px;
+    border-radius: 10px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      max-width: 400px;
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      max-width: 300px;
+    }
+
+    .profil-page__card__pokemon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+
+    p {
+      background-color: transparent;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #fff;
+      text-align: center;
+      margin: 0;
+
+      &.profil-page__card__pokemon__level {
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 15px;
+        padding: 4px 12px;
+        font-size: 12px;
+      }
+    }
+  }
+
+}

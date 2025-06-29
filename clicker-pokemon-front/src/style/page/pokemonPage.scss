@@ -1,0 +1,409 @@
+.pokemon-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #000;
+  color: #fff;
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+
+  .spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin: 100px auto;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50vh;
+  }
+
+  .error-container {
+    text-align: center;
+    margin-top: 3rem;
+
+    .error-message {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  .header-container-pokemon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+
+    .pokemon-title {
+      font-size: 1.5rem;
+      margin: 0;
+      margin-left: 1rem;
+
+      .pokemon-id {
+        color: #999;
+        font-weight: normal;
+      }
+    }
+  }
+
+  .types-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-text {
+    margin-bottom: 0.5rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  .evolution-row {
+    margin-bottom: 0.5rem;
+
+    .evolution-text {
+      margin: 0;
+    }
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+
+    .return-button {
+      background: none;
+      border: 1px solid #fff;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .pokemon-name {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0 1rem;
+      flex-grow: 1;
+      text-align: center;
+    }
+
+    .pokemon-id {
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: #aaa;
+    }
+  }
+
+  .pokemon-card-detail {
+    display: flex;
+    gap: 2rem;
+
+    .left-column {
+      flex: 1;
+
+      .image-container {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+
+        .pokemon-image {
+          width: 300px;
+          height: 300px;
+          object-fit: contain;
+        }
+
+        .shiny-toggle {
+          background-color: rgba(255, 255, 255, 0.1);
+          border: 1px solid #fff;
+          color: #fff;
+          padding: 0.5rem 1rem;
+          margin-top: 1rem;
+          font-size: 0.9rem;
+          border-radius: 4px;
+          cursor: pointer;
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+        }
+      }
+
+      .types-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .info-box {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 0.8rem;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          .info-label {
+            font-weight: 600;
+            color: #aaa;
+          }
+
+          .info-value {
+            font-weight: 500;
+          }
+        }
+      }
+    }
+
+    .right-column {
+      flex: 1.5;
+
+      .section {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+
+        .section-title {
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
+          font-weight: 600;
+          color: #fff;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          padding-bottom: 0.5rem;
+        }
+
+        .talents-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+
+          .talent {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            position: relative;
+
+            &.talent-tc {
+              border-color: gold;
+              background-color: rgba(255, 215, 0, 0.1);
+            }
+
+            .tc-tag {
+              position: absolute;
+              top: -10px;
+              right: 5px;
+              background-color: gold;
+              color: #000;
+              font-size: 0.7rem;
+              padding: 0.2rem 0.4rem;
+              border-radius: 2px;
+              font-weight: 600;
+            }
+          }
+        }
+
+        .stats-container {
+          .stat-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.8rem;
+
+            .stat-label {
+              width: 80px;
+              font-weight: 600;
+              font-size: 0.9rem;
+              color: #aaa;
+            }
+
+            .stat-bar-container {
+              flex-grow: 1;
+              height: 10px;
+              background-color: rgba(255, 255, 255, 0.1);
+              border-radius: 5px;
+              margin: 0 1rem;
+              overflow: hidden;
+
+              .stat-bar-fill {
+                height: 100%;
+                border-radius: 5px;
+
+                &.hp {
+                  background-color: #ff5959;
+                }
+
+                &.atk {
+                  background-color: #f5ac78;
+                }
+
+                &.def {
+                  background-color: #fae078;
+                }
+
+                &.sp-atk {
+                  background-color: #9db7f5;
+                }
+
+                &.sp-def {
+                  background-color: #a7db8d;
+                }
+
+                &.spd {
+                  background-color: #fa92b2;
+                }
+              }
+            }
+
+            .stat-value {
+              width: 40px;
+              text-align: right;
+              font-weight: 500;
+            }
+          }
+        }
+
+        .evolutions-container {
+          .evolution {
+            margin-bottom: 1rem;
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+
+            .evolution-label {
+              display: block;
+              font-weight: 600;
+              margin-bottom: 0.5rem;
+              color: #aaa;
+            }
+
+            .evolution-item {
+              padding: 0.5rem 0;
+              border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+
+              &:last-child {
+                border-bottom: none;
+              }
+            }
+
+            .evolution-name {
+              font-weight: 500;
+              font-size: 1.1rem;
+              display: block;
+            }
+
+            .evolution-condition {
+              display: block;
+              color: #aaa;
+              font-size: 0.9rem;
+              margin-top: 0.3rem;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+
+    &.btn-primary {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+    }
+
+    &.btn-outline {
+      background-color: transparent;
+      color: white;
+      border: 1px solid white;
+    }
+  }
+
+  .card {
+    background-color: #ffffff;
+    color: #242424;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    .card-image {
+      text-align: center;
+      padding: 1rem;
+
+      img {
+        max-width: 100%;
+        height: 300px;
+        object-fit: contain;
+      }
+    }
+
+    .card-content {
+      padding: 1rem;
+
+      .types-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        width: 100%;
+        justify-content: center;
+
+        .type-tag {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem 1rem;
+          font-size: 1rem;
+          border-radius: 20px;
+          color: white;
+          text-shadow: 1px 1px 2px black;
+          font-weight: 500;
+          min-width: 100px;
+        }
+      }
+    }
+  }
+}
