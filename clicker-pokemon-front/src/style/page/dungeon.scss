@@ -1,0 +1,451 @@
+.dungeon-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #242424;
+  color: #fff;
+  padding: 2rem;
+
+  .dungeon-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+    .dungeon-selection-card {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+        0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      .dungeon-title {
+        color: #fff;
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .dungeon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+
+        .dungeon-card {
+          background-color: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+
+          &:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(25, 118, 210, 0.5);
+          }
+
+          &.selected {
+            border-color: #1976d2;
+            background-color: rgba(25, 118, 210, 0.1);
+            box-shadow: 0 0 20px rgba(25, 118, 210, 0.3);
+          }
+
+          .dungeon-name {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+          }
+
+          .dungeon-info {
+            margin-bottom: 1.5rem;
+
+            .difficulty {
+              color: #ffd700;
+              font-weight: bold;
+              margin-bottom: 0.5rem;
+              text-align: center;
+            }
+
+            .type {
+              color: #aaa;
+              text-align: center;
+            }
+          }
+
+          .rewards {
+            .rewards-title {
+              color: #fff;
+              font-weight: bold;
+              margin-bottom: 1rem;
+              text-align: center;
+            }
+
+            .reward-boxes {
+              display: flex;
+              justify-content: center;
+              gap: 0.5rem;
+
+              .reward-box {
+                width: 40px;
+                height: 40px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(255, 255, 255, 0.05);
+
+                img {
+                  width: 25px;
+                  height: 25px;
+                  object-fit: contain;
+                }
+
+                .reward-item {
+                  width: 20px;
+                  height: 20px;
+                  background-color: rgba(255, 255, 255, 0.3);
+                  border-radius: 2px;
+                  position: relative;
+
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .team-selection-card {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+        0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      .section-title {
+        color: #fff;
+        margin-bottom: 2rem;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .selected-pokemon-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+
+        .selected-slot {
+          background-color: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          min-height: 200px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+
+          &.filled {
+            border-color: #1976d2;
+            background-color: rgba(25, 118, 210, 0.1);
+
+            &:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+              border-color: #d32f2f;
+              background-color: rgba(211, 47, 47, 0.1);
+            }
+          }
+
+          &.empty {
+            border-style: dashed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            .empty-slot {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 100%;
+              width: 100%;
+
+              .empty-indicator {
+                font-size: 3rem;
+                color: rgba(255, 255, 255, 0.3);
+                font-weight: bold;
+              }
+            }
+          }
+
+          .pokemon-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            padding: 0.5rem;
+
+            .pokemon-name {
+              color: #fff;
+              font-weight: bold;
+              margin-bottom: 1rem;
+              text-align: center;
+            }
+
+            .pokemon-slot {
+              width: 60px;
+              height: 60px;
+              border: 2px solid rgba(255, 255, 255, 0.3);
+              border-radius: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: rgba(255, 255, 255, 0.05);
+              margin-bottom: 1rem;
+
+              .pokemon-image {
+                width: 40px;
+                height: 40px;
+                border-radius: 4px;
+                object-fit: contain;
+                background-color: rgba(255, 255, 255, 0.05);
+                transition: transform 0.2s ease;
+
+                &:hover {
+                  transform: scale(1.1);
+                }
+              }
+            }
+
+            .pokemon-details {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 0.5rem;
+
+              .MuiTypography-caption {
+                color: #aaa;
+                font-size: 0.7rem;
+              }
+
+              .MuiChip-root {
+                &.MuiChip-colorPrimary {
+                  background-color: #1976d2;
+                  color: #fff;
+                  font-size: 0.6rem;
+                  height: 20px;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .start-button-container {
+        display: flex;
+        justify-content: center;
+
+        .start-dungeon-button {
+          min-width: 250px;
+          padding: 1rem 2rem;
+          font-size: 1.1rem;
+          font-weight: bold;
+          transition: all 0.3s ease;
+
+          &.ready {
+            background-color: #1976d2;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+
+            &:hover {
+              background-color: #1565c0;
+              transform: translateY(-2px);
+              box-shadow: 0 6px 20px rgba(25, 118, 210, 0.6);
+            }
+          }
+
+          &.disabled {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+          }
+        }
+      }
+    }
+
+    .pokemon-team-card {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+        0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      .section-title {
+        color: #fff;
+        margin-bottom: 2rem;
+        font-weight: bold;
+      }
+
+      .pokemon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+
+        .pokemon-card {
+          background-color: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          }
+
+          &.clickable {
+            cursor: pointer;
+
+            &:hover {
+              transform: translateY(-5px);
+              box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+              border-color: rgba(25, 118, 210, 0.6);
+              background-color: rgba(25, 118, 210, 0.1);
+            }
+          }
+
+          .pokemon-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1rem;
+
+            .pokemon-name {
+              color: #fff;
+              font-weight: bold;
+              margin-bottom: 1rem;
+            }
+
+            .pokemon-slot {
+              width: 80px;
+              height: 80px;
+              border: 2px solid rgba(255, 255, 255, 0.3);
+              border-radius: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: rgba(255, 255, 255, 0.05);
+              position: relative;
+
+              .pokemon-image {
+                width: 60px;
+                height: 60px;
+                border-radius: 4px;
+                object-fit: contain;
+                background-color: rgba(255, 255, 255, 0.05);
+                transition: transform 0.2s ease;
+
+                &:hover {
+                  transform: scale(1.1);
+                }
+              }
+            }
+          }
+
+          .pokemon-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            .MuiTypography-body2 {
+              color: #aaa;
+            }
+
+            .MuiChip-root {
+              &.MuiChip-colorPrimary {
+                background-color: #1976d2;
+                color: #fff;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .dungeon-page {
+    padding: 1rem;
+
+    .dungeon-container {
+      .dungeon-selection-card {
+        .dungeon-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .team-selection-card {
+        .selected-pokemon-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.5rem;
+        }
+
+        .start-dungeon-button {
+          min-width: 200px;
+          font-size: 0.9rem;
+        }
+      }
+
+      .pokemon-team-card {
+        .pokemon-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+      }
+    }
+  }
+}
+
+// Animation d'apparition
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dungeon-selection-card,
+.team-selection-card,
+.pokemon-team-card {
+  animation: fadeIn 0.6s ease-out;
+}
+
+// Styles Material-UI
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6,
+.MuiTypography-subtitle1,
+.MuiTypography-body1,
+.MuiTypography-body2 {
+  color: inherit;
+}
+
+.MuiAlert-root {
+  background-color: rgba(211, 47, 47, 0.1);
+  border: 1px solid rgba(211, 47, 47, 0.3);
+  color: #fff;
+} 

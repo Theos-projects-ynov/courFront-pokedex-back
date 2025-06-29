@@ -1,0 +1,64 @@
+.pokemon-selection {
+  width: 100%;
+  text-align: center;
+
+  .fighter-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 0 auto;
+    max-width: 400px;
+
+    .fighter-card {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      background: rgba(255, 255, 255, 0.1);
+
+      &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+      }
+
+      &.selected {
+        border-color: #007bff;
+        background: rgba(0, 123, 255, 0.2);
+        box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+      }
+
+      .MuiCardContent-root {
+        padding: 8px !important;
+        text-align: center;
+      }
+
+      .fighter-sprite {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+        margin-bottom: 5px;
+      }
+
+      .fighter-name {
+        color: white;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: block;
+      }
+    }
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    .fighter-selection-grid {
+      grid-template-columns: repeat(2, 1fr);
+      max-width: 300px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .fighter-selection-grid {
+      grid-template-columns: 1fr;
+      max-width: 200px;
+    }
+  }
+} 

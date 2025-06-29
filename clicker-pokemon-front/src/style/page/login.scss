@@ -1,0 +1,183 @@
+.login-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #242424;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+
+  .login-container {
+    width: 100%;
+    max-width: 400px;
+    
+    .login-card {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+        0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 2rem;
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+
+        .login-title {
+          font-size: 2rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+          color: #fff;
+        }
+        
+        .MuiTypography-body2 {
+          color: #aaa;
+        }
+      }
+
+      .login-error {
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        background-color: rgba(211, 47, 47, 0.1);
+        border: 1px solid rgba(211, 47, 47, 0.3);
+        color: #ff6b6b;
+
+        .MuiAlert-message {
+          color: #ff6b6b;
+        }
+      }
+
+      .login-form {
+        .MuiTextField-root {
+          margin-bottom: 1rem;
+
+          .MuiInputLabel-root {
+            color: #aaa;
+            
+            &.Mui-focused {
+              color: #fff;
+            }
+          }
+
+          .MuiOutlinedInput-root {
+            color: #fff;
+            border-radius: 4px;
+
+            .MuiOutlinedInput-notchedOutline {
+              border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            &:hover .MuiOutlinedInput-notchedOutline {
+              border-color: rgba(255, 255, 255, 0.5);
+            }
+
+            &.Mui-focused .MuiOutlinedInput-notchedOutline {
+              border-color: #1976d2;
+            }
+
+            input {
+              color: #fff;
+            }
+          }
+
+          .MuiIconButton-root {
+            color: #aaa;
+
+            &:hover {
+              color: #fff;
+            }
+          }
+        }
+
+        .login-button {
+          width: 100%;
+          height: 40px;
+          background-color: #1976d2;
+          color: white;
+          border-radius: 4px;
+          border: none;
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-transform: uppercase;
+          cursor: pointer;
+          box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+            0px 2px 2px 0px rgba(0, 0, 0, 0.14), 
+            0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+          transition: background-color 0.3s;
+          margin: 1rem 0;
+
+          &:hover {
+            background-color: #1565c0;
+          }
+
+          &:disabled {
+            background-color: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.26);
+            box-shadow: none;
+            cursor: default;
+          }
+        }
+
+        .login-links {
+          text-align: center;
+          margin-top: 1rem;
+
+          .MuiTypography-body2 {
+            color: #aaa;
+          }
+
+          .register-link {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+
+            &:hover {
+              color: #1565c0;
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 600px) {
+  .login-page {
+    padding: 1rem;
+
+    .login-container {
+      .login-card {
+        padding: 1.5rem;
+        
+        .login-header {
+          margin-bottom: 1.5rem;
+
+          .login-title {
+            font-size: 1.5rem;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animation pour l'apparition
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-card {
+  animation: fadeInUp 0.6s ease-out;
+} 

@@ -1,0 +1,40 @@
+.profil-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+
+    .profil-page__title {
+        margin-top: 2rem;
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .profil-page__card {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #3a3a3a;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+        width: 50%;
+        height: 50%;
+
+        .profil-page__card__title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+    }
+}

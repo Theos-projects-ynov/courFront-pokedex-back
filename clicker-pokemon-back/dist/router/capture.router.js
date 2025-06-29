@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middlewares/auth");
+const capture_controller_1 = require("../controller/capture.controller");
+const router = (0, express_1.Router)();
+router.post('/zone/:zoneId', auth_1.authenticateJWT, capture_controller_1.getOrCreateCapture);
+router.post('/zone/:zoneId/release', auth_1.authenticateJWT, capture_controller_1.releaseCapture);
+router.post('/zone/:zoneId/attempt', auth_1.authenticateJWT, capture_controller_1.attemptCapture);
+exports.default = router;

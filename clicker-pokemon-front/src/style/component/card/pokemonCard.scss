@@ -1,0 +1,101 @@
+.pokemon-card {
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #2a2a2a;
+  transition: all 0.3s ease;
+  text-align: center;
+  
+  &__sprite {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 8px;
+    transition: filter 0.3s ease;
+  }
+  
+  &__mystery {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 60px;
+    margin-bottom: 8px;
+    
+    &-mark {
+      color: #fff !important;
+      font-weight: bold;
+    }
+  }
+  
+  &__name {
+    color: #fff !important;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  
+  &__stats {
+    gap: 4px;
+  }
+  
+  &__level, &__hp {
+    color: #ccc !important;
+    font-size: 0.75rem;
+  }
+  
+  // Variants par type
+  &--team {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    border-color: #42a5f5;
+    
+    &:hover {
+      background: linear-gradient(135deg, #2196f3, #1976d2);
+      transform: translateY(-2px);
+    }
+  }
+  
+  &--enemy {
+    background: linear-gradient(135deg, #d32f2f, #c62828);
+    border-color: #f44336;
+    
+    &:hover {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      transform: translateY(-2px);
+    }
+  }
+  
+  &--boss {
+    background: linear-gradient(135deg, #7b1fa2, #6a1b9a);
+    border-color: #9c27b0;
+    box-shadow: 0 0 20px rgba(156, 39, 176, 0.3);
+    
+    &:hover {
+      background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(156, 39, 176, 0.5);
+    }
+  }
+  
+  // États
+  &--ko {
+    background: #424242 !important;
+    border-color: #666 !important;
+    box-shadow: none !important;
+    
+    .pokemon-card__name, .pokemon-card__level, .pokemon-card__hp {
+      color: #999 !important;
+    }
+  }
+  
+  &--selected {
+    border-color: #ffeb3b !important;
+    box-shadow: 0 0 15px rgba(255, 235, 59, 0.4);
+    transform: scale(1.05);
+  }
+  
+  &--clickable {
+    cursor: pointer;
+    
+    &:hover:not(.pokemon-card--ko) {
+      transform: translateY(-2px);
+    }
+  }
+} 

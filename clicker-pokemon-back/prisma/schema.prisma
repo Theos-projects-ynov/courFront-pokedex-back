@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trainer {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String
+  age             Int
+  region          String
+  money           Int       @default(0)
+  level           Int       @default(0)
+  exp             Int       @default(0)
+  gender          String
+  height          Float
+  weight          Float
+  description     String
+  image           String
+  badge           Json?
+  pokemonStarter  Json?
+  teamPokemon     Json?
+  pokemons        OwnedPokemon[]
+  pokemonOwnedMoves PokemonOwnedMove[]
+  isAdmin         Boolean    @default(false)
+  captureAttempts CaptureAttempt[]
+  dungeonSessions DungeonSession[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model OwnedPokemon {
+  id             String   @id @default(uuid())
+  pokedexId      Int
+  trainer        Trainer  @relation(fields: [trainerId], references: [id])
+  trainerId      String
+  pokemonOwnedMoves PokemonOwnedMove[]
+  boostAtk       Int      @default(0)
+  boostDef       Int      @default(0)
+  boostRes       Int      @default(0)
+  boostPv        Int      @default(0)
+  level          Int      @default(1)
+  genre          String
+  createdAt      DateTime @default(now())
+}
+
+model CaptureAttempt {
+  id           String    @id @default(uuid())
+  trainer      Trainer   @relation(fields: [trainerId], references: [id])
+  trainerId    String    @unique
+  zone         Int
+  pokedexId    Int
+  level        Int
+  isShiny      Boolean
+  genre        String
+  data         Json
+  createdAt    DateTime  @default(now())
+}
+
+model Move {
+  id          Int          @id // id de PokéAPI (move)
+  name        String
+  type        String
+  power       Int?
+  accuracy    Int?
+  pp          Int?
+  priority    Int?
+  damageClass String
+  pokemonMoves PokemonMove[]
+  pokemonOwnedMoves PokemonOwnedMove[]
+}
+
+model PokemonMove {
+  id         String   @id @default(uuid())
+  pokemonId  Int      // pokedex_id du Pokémon (ex: 25 pour Pikachu)
+  move       Move     @relation(fields: [moveId], references: [id])
+  moveId     Int
+  level      Int      // Level où le Pokémon apprend cette attaque
+
+  @@unique([pokemonId, moveId, level])
+}
+
+model PokemonOwnedMove {
+  id             String        @id @default(uuid())
+  trainer        Trainer       @relation(fields: [trainerId], references: [id])
+  trainerId      String
+  ownedPokemon   OwnedPokemon  @relation(fields: [ownedPokemonId], references: [id])
+  ownedPokemonId String
+  move           Move          @relation(fields: [moveId], references: [id])
+  moveId         Int
+
+  @@unique([trainerId, ownedPokemonId, moveId])
+}
+
+model Dungeon {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  rewards         String
+  bossPokemonId   Int
+  bossLevel       Int
+  spawnLevels     Json     // [15, 17, 20] - Array des niveaux des 3 Pokémon
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  dungeonSessions DungeonSession[]
+}
+
+model DungeonSession {
+  id              String   @id @default(uuid())
+  trainer         Trainer  @relation(fields: [trainerId], references: [id])
+  trainerId       String
+  dungeon         Dungeon  @relation(fields: [dungeonId], references: [id])
+  dungeonId       Int
+  selectedPokemon Json     // Array des IDs des 4 Pokémon sélectionnés
+  status          String   @default("READY") // READY, IN_PROGRESS, BATTLE, COMPLETED, FAILED
+  defeatedEnemies Int      @default(0)
+  enemyPokemons   Json?    // Données des 3 Pokémon générés pour ce donjon
+  deadPokemonIds  Json?    // Array des IDs des Pokémon du joueur qui sont morts
+  currentBattleId String?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([trainerId]) // Un joueur ne peut avoir qu'une session active à la fois
+}

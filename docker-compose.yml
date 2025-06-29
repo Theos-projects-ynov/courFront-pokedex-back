@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pokemon_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: pokemaster
+      POSTGRES_PASSWORD: pokepass
+      POSTGRES_DB: clickerpokemon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: pokemon_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@poke.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+  backend:
+    build:
+      context: ./clicker-pokemon-back
+      dockerfile: Dockerfile
+    container_name: pokemon_backend
+    restart: always
+    ports:
+      - "4000:4000"
+      - "4001:4001"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - WS_PORT=4001
+      - DATABASE_URL=postgresql://pokemaster:pokepass@postgres:5432/clickerpokemon
+    depends_on:
+      - postgres
+    volumes:
+      - ./clicker-pokemon-back:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./clicker-pokemon-front
+      dockerfile: Dockerfile
+    container_name: pokemon_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:4000
+      - VITE_WS_URL=ws://localhost:4001
+    depends_on:
+      - backend
+    volumes:
+      - ./clicker-pokemon-front:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
