@@ -17,5 +17,5 @@ COPY . .
 # Exposer le port
 EXPOSE 3000
 
-# Commande par défaut
-CMD ["pnpm", "run", "dev"] 
+# Commande par défaut avec host 0.0.0.0 pour Docker
+CMD ["pnpm", "exec", "vite", "--port", "3000", "--host", "0.0.0.0"] 
