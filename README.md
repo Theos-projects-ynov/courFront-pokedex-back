@@ -1,35 +1,66 @@
-# 🎮 Pokédex Back - API Backend
+# 🎮 DonjonDex - Jeu Pokémon Full-Stack
 
-Backend Node.js/TypeScript pour un jeu de capture et combat de Pokémon avec système de donjon.
+Application complète de capture et combat de Pokémon avec système de donjon.
+
+- **Frontend** : React + TypeScript + Vite + Material-UI
+- **Backend** : Node.js + TypeScript + Express + WebSocket
 
 ## 🚀 Technologies
+
+### Frontend
+
+- **React 19** + **TypeScript**
+- **Vite** - Build tool moderne
+- **Material-UI** - Composants UI
+- **Redux Toolkit** - Gestion d'état
+- **SCSS** - Styling personnalisé
+
+### Backend
 
 - **Node.js** + **TypeScript**
 - **Express.js** - API REST
 - **WebSocket** - Communication temps réel pour les combats
 - **Prisma** - ORM pour la base de données
 - **PostgreSQL** - Base de données
-- **Docker** - Conteneurisation
 - **JWT** - Authentification
 - **bcrypt** - Chiffrement des mots de passe
+
+### Infrastructure
+
+- **Docker** - Conteneurisation complète
+- **Docker Compose** - Orchestration des services
 
 ## 📁 Structure du Projet
 
 ```
-src/
-├── api/           # Intégrations APIs externes (Tyradex, PokéAPI)
-├── config/        # Configuration (DB, environnement, WebSocket)
-├── controller/    # Contrôleurs REST
-├── middlewares/   # Middlewares Express (auth, etc.)
-├── models/        # Interfaces TypeScript
-├── router/        # Routes Express
-├── services/      # Logique métier
-├── types/         # Types personnalisés
-├── utils/         # Utilitaires
-├── ws/            # Gestionnaires WebSocket
-│   ├── battle/    # Combat 1v1
-│   └── dungeon/   # Combat de donjon
-└── server.ts      # Point d'entrée
+donjondex/
+├── clicker-pokemon-front/    # 🎮 Application React Frontend
+│   ├── src/
+│   │   ├── components/      # Composants React
+│   │   ├── pages/          # Pages de l'application
+│   │   ├── store/          # Redux store
+│   │   ├── services/       # Services API
+│   │   └── types/          # Types TypeScript
+│   ├── public/             # Assets statiques
+│   └── Dockerfile          # Image Docker frontend
+│
+├── clicker-pokemon-back/     # ⚡ API Backend Node.js
+│   ├── src/
+│   │   ├── api/           # Intégrations APIs externes
+│   │   ├── config/        # Configuration
+│   │   ├── controller/    # Contrôleurs REST
+│   │   ├── middlewares/   # Middlewares Express
+│   │   ├── models/        # Interfaces TypeScript
+│   │   ├── router/        # Routes Express
+│   │   ├── services/      # Logique métier
+│   │   ├── ws/            # Gestionnaires WebSocket
+│   │   │   ├── battle/    # Combat 1v1
+│   │   │   └── dungeon/   # Combat de donjon
+│   │   └── server.ts      # Point d'entrée
+│   ├── prisma/            # Base de données
+│   └── Dockerfile         # Image Docker backend
+│
+└── docker-compose.yml        # 🐳 Orchestration complète
 ```
 
 ## 🐳 Installation avec Docker (Recommandé)
@@ -38,21 +69,25 @@ src/
 
 - Docker & Docker Compose
 
-### Démarrage
+### Démarrage Complet
 
 ```bash
-# Depuis la racine du projet
+# Depuis la racine du projet - démarre TOUT l'écosystème
 docker compose up -d
 
-# Vérifier les logs
-docker compose logs backend -f
+# Vérifier les logs (backend et frontend)
+docker compose logs -f
 ```
 
-### Services démarrés
+### 🎯 Services Disponibles
 
-- **Backend** : http://localhost:4000 (REST) + ws://localhost:4001 (WebSocket)
-- **PostgreSQL** : localhost:5432
-- **pgAdmin** : http://localhost:5050 (admin@poke.com / admin123)
+- **🎮 Frontend React** : http://localhost:3000 (Interface du jeu)
+- **⚡ Backend API** : http://localhost:4000 (REST API)
+- **🔌 WebSocket** : ws://localhost:4001 (Combat temps réel)
+- **🗄️ PostgreSQL** : localhost:5432 (Base de données)
+- **🛠️ pgAdmin** : http://localhost:5050 (Interface DB - admin@poke.com / admin123)
+
+> ✅ **Une seule commande et tout fonctionne !** Le frontend, le backend, la base de données et les outils d'administration sont automatiquement configurés et connectés.
 
 ## 🔧 Installation Manuelle
 
@@ -78,6 +113,44 @@ npx prisma generate
 
 # Démarrage en développement
 npm run dev
+```
+
+## 🎮 Utilisation
+
+### Accès à l'Application
+
+1. **Démarrer l'environnement complet :**
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Accéder au jeu :**
+
+   - Ouvrir http://localhost:3000 dans votre navigateur
+   - Créer un compte ou se connecter
+   - Commencer à capturer des Pokémon !
+
+3. **Outils de développement :**
+   - **pgAdmin** : http://localhost:5050 (gestion base de données)
+   - **API Backend** : http://localhost:4000 (endpoints REST)
+   - **WebSocket** : ws://localhost:4001 (debugging temps réel)
+
+### Commandes Utiles
+
+```bash
+# Voir les logs en temps réel
+docker compose logs -f
+
+# Redémarrer un service spécifique
+docker compose restart frontend
+docker compose restart backend
+
+# Arrêter tous les services
+docker compose down
+
+# Reconstruire si modifications
+docker compose up --build -d
 ```
 
 ## 🌐 API REST Endpoints
@@ -290,7 +363,7 @@ WS_PORT=4001
 
 # 🌟 **Fonctionnalités Front-End**
 
-### 🔍 **PokéDex Interactif**
+### 🔍 **DonjonDex Interactif**
 
 - **Navigation par génération** (1-9) avec cache intelligent
 - **Fiches détaillées** de chaque Pokémon
@@ -324,92 +397,37 @@ WS_PORT=4001
 - **Gestion des HP** et statuts KO
 - **Système de retry** intelligent
 
-## 🛠️ **Technologies**
-
-### **Frontend**
-
-- **React 18** avec TypeScript
-- **Vite** pour le build ultra-rapide
-- **Material-UI 5** pour l'interface
-- **SCSS** pour le styling personnalisé
-- **React Router 6** pour la navigation
-
-### **Gestion d'État**
-
-- **Redux Toolkit** pour l'état global
-- **RTK Query** pour les appels API avec cache
-- **React Hooks** personnalisés
-
-### **Optimisations**
-
-- **Cache intelligent** (1 semaine pour Pokémon, 24h pour profil)
-- **Promise.all** pour les requêtes parallèles
-
 ## 🚀 **Installation**
 
-### **Prérequis**
+### Installation Frontend Manuelle (Optionnel)
 
-- Node.js 18+
-- npm ou pnpm
-- API Backend PokéDex en cours d'exécution sur le port 4000
-
-### ** 1. Installer les dépendances**
+Si vous préférez développer le frontend séparément :
 
 ```bash
+cd clicker-pokemon-front
 npm install
-# ou
-pnpm install
+npm run dev  # Port 3000
 ```
 
-### **2. Configuration**
-
-Vérifier que l'API backend est démarrée sur `http://localhost:4000`
-
-### **3. Lancer en développement**
+## 🎯 Scripts de Développement
 
 ```bash
-npm run dev
-# ou
-pnpm dev
-```
-
-L'application sera disponible sur `http://localhost:3000`
-
-## 📁 **Structure du Projet**
-
-```
-src/
-├── api/                    # Services API (RTK Query)
-│   ├── AuthAPI.ts         # Authentification
-│   └── PokemonAPI.ts      # Données Pokémon
-├── components/            # Composants réutilisables
-│   ├── card/             # Cartes (Pokémon, Profil, etc.)
-│   ├── common/           # Composants communs (Loaders, Erreurs)
-│   ├── header/           # Navigation
-│   └── page/             # Pages principales
-├── constants/            # Constantes applicatives
-├── hooks/                # Hooks personnalisés
-├── router/               # Configuration routing
-├── service/              # Services métier
-├── store/                # Configuration Redux
-├── style/                # Styles SCSS
-├── types/                # Types TypeScript
-└── utils/                # Fonctions utilitaires
-```
-
-## 🎯 **Scripts Disponibles**
-
-```bash
-npm run dev         # Démarrage développement
+# Frontend
+npm run dev         # Développement Vite
 npm run build       # Build production
 npm run lint        # Linting ESLint
+
+# Backend
+npm run dev         # Développement avec auto-reload
+npm run build       # Compilation TypeScript
+npm start           # Production
 ```
 
 ## 🌐 **Pages Principales**
 
 | Route                 | Description      | Fonctionnalités                       |
 | --------------------- | ---------------- | ------------------------------------- |
-| `/`                   | Home - PokéDex   | Navigation génération, cartes Pokémon |
+| `/`                   | Home - DonjonDex | Navigation génération, cartes Pokémon |
 | `/pokemon/:id`        | Détail Pokémon   | Infos complètes, stats, types         |
 | `/profil`             | Profil Dresseur  | Infos perso, équipe, progression      |
 | `/catch`              | Capture Pokémon  | Recherche, capture, gestion           |
@@ -418,46 +436,23 @@ npm run lint        # Linting ESLint
 | `/login`              | Connexion        | Authentification                      |
 | `/register`           | Inscription      | Création compte dresseur              |
 
-## ⚡ **Optimisations Performance**
+## ⚡ Optimisations & Performance
 
-### **Cache Intelligent**
+- **Cache intelligent** : Pokémon (1 semaine) - Profil (24h)
+- **Requêtes parallèles** avec Promise.all
+- **API fallback** entre Tyradex et PokéAPI
 
-- **Pokémon Data** : Cache 1 semaine (604800s)
-- **Profil Dresseur** : Cache 24h avec invalidation auto
-- **Noms Pokémon** : Cache mémoire persistant
+---
 
-## 🔧 **Configuration API**
+## 🚀 Démarrage Rapide
 
-L'application communique avec l'API backend via :
+```bash
+# Une seule commande pour tout démarrer !
+docker compose up -d
 
-```typescript
-// Base URL configurée dans authService.ts
-const api = axios.create({
-  baseURL: "http://localhost:4000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+# Ouvrir http://localhost:3000 dans votre navigateur
+# Créer un compte et commencer à jouer ! 🎮
 ```
-
-### **Endpoints utilisés**
-
-- `POST /trainer/login` - Connexion
-- `POST /trainer/register` - Inscription
-- `GET /trainer/me` - Profil dresseur
-- `GET /pokemon/generation/:id` - Pokémon par génération
-- `GET /pokemon/:id` - Détail Pokémon
-- WebSocket pour les batailles de donjon
-
-## 🎨 **Design System**
-
-### **Couleurs Principales**
-
-- **Background** : `#242424` (sombre)
-- **Cards** : `#3a3a3a` (gris foncé)
-- **Primary** : `#007bff` (bleu)
-- **Success** : `#27ae60` (vert)
-- **Danger** : `#e74c3c` (rouge)
 
 ## 👥 Contributeurs
 
@@ -467,3 +462,7 @@ const api = axios.create({
 
 - **API Tyradex** - Pour les données officielles des Pokémon
 - **PokéAPIv2** - Pour les informations complémentaires comme les attaques des pokémons
+
+---
+
+> **DonjonDex** - Votre aventure Pokémon commence ici ! ⚡🎮
